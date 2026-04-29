@@ -76,7 +76,19 @@ Even the most aggressive post-billing optimization cannot recover cost that was 
 | FinOps dashboards / recommendations | Post-billing | Provides insight with no enforcement path |
 | Cloud-native advisors (Trusted Advisor, Azure Advisor) | Post-billing | Advisory only; no learned policy; no intent context |
 
-### 2.3 The Three Failure Modes PBCP Addresses
+### 2.3 Positioning Against Cloud-Native Advisors
+
+AWS Trusted Advisor, Azure Advisor, and GCP Recommender represent the current state of the art in cloud cost governance. All three share a fundamental architectural constraint: they operate on billing and utilization data that is already 24–72 hours old, produce advisory recommendations with no enforcement mechanism, and have no knowledge of *why* a workload was provisioned the way it was. A recommendation to "resize this EC2 instance" is generated without any context about whether the instance is serving a latency-sensitive API, running a one-time ETL job, or sitting idle after a project was cancelled.
+
+PBCP differs on every dimension: it acts before execution rather than after billing, it enforces decisions rather than suggesting them, and it grounds every governance action in structured workload intent — the declared purpose, team, expected duration, and resource requirements that a cloud-native advisor never sees. The result is a system that prevents waste rather than reporting it.
+
+### 2.4 Why Workload Semantics Matter
+
+Static rules — "use spot for batch jobs", "cap node count at 10" — fail because they treat all workloads of a given type as identical. A 4-hour ETL job processing 50 GB of data has fundamentally different optimal resource requirements than a 4-hour ETL job processing 500 GB, even though both would match the same rule. Without capturing the *intent* behind a workload — its data volume expectations, team history, priority level, and run frequency — any governance system is operating on incomplete information.
+
+Intent modeling closes this gap: by structuring the semantic properties of a workload at submission time, the system can match it against historically optimal configurations for *similar* workloads rather than applying one-size-fits-all rules. This is what makes learned policies more accurate than static thresholds, and what makes the simulation engine's utilization estimates workload-specific rather than class-generic.
+
+### 2.5 The Three Failure Modes PBCP Addresses
 
 **1. Pre-provisioning blindness:** Users select configurations without context-aware guidance. Without a simulation layer, there is no mechanism to predict that a 20-node cluster will run at 15% CPU utilization before it is provisioned.
 
@@ -84,7 +96,7 @@ Even the most aggressive post-billing optimization cannot recover cost that was 
 
 **3. Advisory-only governance:** Current systems produce recommendations that can be ignored. PBCP replaces advisory guardrails with enforceable policies derived from learned optimal behavior, and replaces runtime monitoring with autonomous corrective actions.
 
-### 2.4 Scope
+### 2.6 Scope
 
 PBCP governs the following workload types across AWS, Azure, and GCP:
 
@@ -102,7 +114,7 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
 
 | ID | Goal | Success Metric |
 |---|---|---|
-| G1 | Prevent cloud waste before billing occurs | CPS ≥ 0.30 across all workload types |
+| G1 | Prevent cloud waste before billing occurs | Valid CPS ≥ 0.30 across all workload types (CPS × ESR, with ESR ≥ 0.95) |
 | G2 | Reduce over-provisioning at provisioning time | ≥ 40% reduction in over-provisioning rate vs. baseline |
 | G3 | Improve resource utilization during execution | ≥ 20% improvement in avg CPU/memory utilization |
 | G4 | Enforce governance decisions, not just recommend them | ≥ 85% of triggered policies result in enforced action |
@@ -376,6 +388,18 @@ class CloudCostModel:
 | `suggest_fraction` | 0.15 | waste > 15% → SUGGEST |
 | `target_utilization` | 0.70 | right-sizing target after correction |
 
+#### Latency & Feasibility
+
+The simulation engine runs synchronously at submission time. Target latency is **< 2 seconds** for all standard workload types, achieved because the engine performs no network I/O — cost model data is loaded from YAML at startup, utilization priors are in-memory, and right-sizing is an arithmetic computation.
+
+For low-risk workload types (environment = `sandbox` or `dev`, waste confidence < 0.60), an **async approval path** is available: the workload is provisioned immediately at the right-sized configuration while the full simulation report is generated in the background. This ensures governance never becomes a hard blocker for development workflows.
+
+| Path | Trigger | Latency |
+|---|---|---|
+| Synchronous (default) | All `prod`/`staging` workloads | < 2 sec |
+| Async | `sandbox`/`dev` + low confidence | < 50 ms (non-blocking) |
+| Human escalation | `BLOCK` with low simulation confidence | Up to 15 min (manual review) |
+
 ---
 
 ### 5.3 Intent → Policy Learning System
@@ -446,6 +470,10 @@ If p25 differs significantly from current policy threshold:
         ▼
 PolicyRegistry.upsert(learned_policy)  ← only if confidence ≥ 0.80
 ```
+
+The current implementation uses percentile statistics as a transparent, auditable baseline. This is intentional: for an enforcement system, interpretability of the policy derivation process is as important as accuracy.
+
+**Future direction — RL-based policy optimization:** The percentile approach is a strong baseline but does not account for the sequential nature of policy updates or the delayed reward signal (a policy set today may prevent waste two weeks from now). A natural extension is to model policy threshold selection as a multi-armed bandit problem, where each policy parameter choice is an arm and the reward is the CPS improvement observed over the following N days. This would allow thresholds to adapt to shifting workload patterns without manual recalibration. The `Policy.source` field already distinguishes `"builtin"` from `"learned"`, and a `"rl_optimized"` source value is reserved for this extension.
 
 #### PolicyRegistry
 
@@ -585,6 +613,26 @@ Where:
 - `Prevented_Cost` = `Potential_Cost_Without_System` − `Actual_Cost_With_System`
 
 A CPS of 0.35 means the system prevented 35% of what would have been billed without it.
+
+#### Execution Success Rate (ESR) — Constraint Metric
+
+CPS alone is gameable: a system that blocks every workload trivially achieves CPS = 1.0 while delivering no business value. To prevent this, PBCP introduces a mandatory constraint metric:
+
+```
+ESR = Workloads_Completed_Successfully / Workloads_Submitted
+```
+
+A workload is considered successfully completed if it finishes within 120% of its declared expected duration without failure. Blocked workloads that are resubmitted with corrected configurations and then complete successfully count as ESR successes.
+
+The primary reporting metric for all experiments is **Valid CPS**, defined as:
+
+```
+Valid CPS = CPS × ESR
+```
+
+This ensures that prevention value is only counted when workloads actually complete. A system that blocks aggressively will have low ESR and therefore low Valid CPS, regardless of its raw CPS score. The target Valid CPS for this system is ≥ 0.30, with ESR ≥ 0.95 as a hard constraint — meaning at most 5% of submitted workloads may fail or be permanently blocked without successful resubmission.
+
+Both CPS and ESR are tracked per workload and reported in every experiment summary.
 
 #### CPS Tracked at Three Stages
 
@@ -1036,6 +1084,16 @@ The synthetic dataset consists of eight interrelated tables. Tables 1–6 are sh
 - **Random seed:** fixed (42) for reproducibility
 - **Generation script:** `/data/generate_dataset.py`
 
+#### Real-World Fidelity
+
+The synthetic dataset is explicitly modeled after the schemas and cost structures of production cloud billing systems to ensure practical credibility:
+
+- **AWS CUR (Cost and Usage Report):** Instance types, pricing dimensions (on-demand, reserved, spot), and cost allocation tag fields are drawn directly from the AWS CUR v2 column specification. The `instance_type` values (`m5.xlarge`, `r5.2xlarge`, `p3.2xlarge`, etc.) and their hourly rates match current AWS us-east-1 on-demand pricing.
+- **Azure Cost Management exports:** Resource SKU naming conventions (`Standard_D4s_v3`, `Standard_NC6`), amortized cost fields, and reservation utilization patterns follow the Azure Cost Management API export format.
+- **GCP Billing exports:** Machine type naming (`n2-standard-4`, `a2-highgpu-1g`), committed use discount (CUD/SUD) credit structures, and BigQuery billing export schema conventions are replicated.
+
+The workload distributions (over-provisioning rates, utilization variance by job type, idle cluster frequency) are parameterized to reflect enterprise-scale patterns reported in the Flexera 2024 State of the Cloud Report, which found that 32% of cloud spend is wasted and over-provisioning accounts for the largest share. This grounds the experiment results in realistic, externally validated waste rates rather than arbitrarily chosen anomaly injection frequencies.
+
 ---
 
 ## 7. Experiments & Evaluation Plan
@@ -1156,6 +1214,8 @@ Total potential cost:          $94,200
 Total actual cost:             $61,230
 Total prevented cost:          $32,970
 System-level CPS:                0.35
+Execution Success Rate (ESR):    0.97   ← constraint: must be ≥ 0.95
+Valid CPS (CPS × ESR):           0.34
 
 CPS by stage:
   pre_provision:   0.40
@@ -1350,7 +1410,7 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Simulation engine is synchronous | Blocks provisioning until result returned | Prevention requires the simulation to complete before execution; latency is a known trade-off |
+| Simulation engine is synchronous for prod, async for dev/sandbox | Synchronous for `prod`/`staging`; async non-blocking for `dev`/`sandbox` | Synchronous prevention is essential for high-stakes workloads; async path avoids friction in development workflows. Target: < 2 sec synchronous, < 50 ms async. |
 | Policy enforcement is hard, not soft | REJECT and AUTO_CORRECT have binding effect | Advisory-only governance is the existing failed approach; enforcement is the core contribution |
 | CPS is the primary metric | Defined as prevented / potential | Provides a single comparable number across stages, providers, and workload types |
 | Right-sizing targets 70% utilization | Configurable; default 70% | 70% leaves headroom for load spikes while eliminating gross over-provisioning |
@@ -1364,7 +1424,7 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 2. **Policy learning convergence:** The `PolicyLearner` requires `min_samples_to_learn = 10` historical workloads per type before emitting a learned policy. In early deployment (sparse history), the system relies entirely on built-in policies. This should be documented as a deployment ramp-up constraint.
 
-3. **CPS gaming risk:** A system could maximize CPS by aggressively blocking valid workloads. The experimental design must include a correctness check: blocked/auto-corrected workloads must still complete successfully. Job completion rate should be reported alongside CPS.
+3. **CPS gaming risk — resolved via ESR:** The Execution Success Rate (ESR) constraint metric directly addresses this. Valid CPS = CPS × ESR means that aggressive blocking lowers ESR and therefore lowers Valid CPS. The hard constraint ESR ≥ 0.95 is reported in every experiment alongside CPS; a result that achieves high CPS but violates the ESR constraint is considered a failed configuration, not a success.
 
 4. **Cross-team policy sharing:** The policy registry is currently global (shared across teams). This enables broader learning but may surface organization-specific constraints as false violations. Consider a `scope` field on `Policy` (`global` vs `team_scoped`).
 
