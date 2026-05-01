@@ -17,15 +17,15 @@
 3. [Design Goals & Principles](#3-design-goals--principles)
 4. [System Architecture](#4-system-architecture)
 5. [Component Design](#5-component-design)
-   - 5.1 [Intent Modeling Layer](#51-intent-modeling-layer)
-   - 5.2 [Pre-Execution Simulation Engine](#52-pre-execution-simulation-engine)
-   - 5.3 [Intent → Policy Learning System](#53-intent--policy-learning-system)
+   - 5.1 [Intent Modeling Layer](#51-intent-modeling-layer) *(NLP inference + workload embedding)*
+   - 5.2 [Pre-Execution Simulation Engine](#52-pre-execution-simulation-engine) *(cost-of-correction model)*
+   - 5.3 [Intent → Policy Learning System (Phase 3)](#53-intent--policy-learning-system-phase-3--learn--adapt) *(convergence analysis)*
    - 5.4 [Policy-Driven Pre-Provisioning Guardrails](#54-policy-driven-pre-provisioning-guardrails)
    - 5.5 [Auto-Correcting Runtime Optimizer](#55-auto-correcting-runtime-optimizer)
-   - 5.6 [Cost Prevention Score (CPS)](#56-cost-prevention-score-cps)
+   - 5.6 [CPS + IFS Dual-Metric Reporting](#56-cost-prevention-score-cps--intent-fidelity-score-ifs--dual-metric-reporting)
    - 5.7 [Cross-Cloud Normalization Layer](#57-cross-cloud-normalization-layer)
    - 5.8 [ML-Based Resource Attribution](#58-ml-based-resource-attribution)
-   - 5.9 [Semantic Anomaly Detection & Root Cause Analysis](#59-semantic-anomaly-detection--root-cause-analysis)
+   - 5.9 [Intent-Behavior Divergence Detection & RCA](#59-intent-behavior-divergence-detection--root-cause-analysis)
    - 5.10 [AI Workload Governance Module](#510-ai-workload-governance-module)
 6. [Data Model](#6-data-model)
 7. [Experiments & Evaluation Plan](#7-experiments--evaluation-plan)
@@ -40,13 +40,15 @@
 
 Modern cloud cost governance has a fundamental architecture flaw: it is built entirely around detection and response, not prevention. Billing systems fire after waste has accumulated. Anomaly detectors trigger after hours of inefficient resource consumption. Governance dashboards surface insights with no enforcement path. The result is a structural lag between cloud activity and cost accountability that compounds at scale.
 
-The **Pre-Billing Cost Prevention Framework (PBCP)** — evolved from the Intent-Aware Cloud Governance (IACG) research line — eliminates this lag by repositioning every governance action to occur *before* billing is incurred. The system operates at three enforcement points:
+The **Pre-Billing Cost Prevention Framework (PBCP)** — evolved from the Intent-Aware Cloud Governance (IACG) research line — eliminates this lag by repositioning every governance action to occur *before* billing is incurred. The system is organized into three explicit phases:
 
-1. **Pre-provisioning stage** — evaluate workload intent against a learned policy registry and a cross-cloud cost model; block or auto-correct over-provisioned configurations before any resource is created.
-2. **Pre-execution simulation stage** — run a full cost and utilization simulation on the exact requested workload; if predicted waste exceeds a threshold, trigger BLOCK, AUTO-CORRECT, or SUGGEST before the first instruction executes.
-3. **Runtime adaptive correction stage** — during execution, continuously monitor and autonomously take corrective actions (downscale, terminate, migrate to spot) while logging every dollar of cost prevented.
+- **Phase 1 — Simulate & Prevent** (pre-execution): infer workload intent from natural language, match against a workload embedding space for workload-specific utilization priors, simulate predicted cost and waste, and apply decision-theoretic intervention (weighing prevention value against correction cost) before any resource is created.
+- **Phase 2 — Monitor & Correct** (runtime): continuously monitor active workloads and autonomously apply corrections (downscale, terminate, spot-migrate) while logging every dollar of prevented cost.
+- **Phase 3 — Learn & Adapt** (post-execution): feed observed intent-behavior divergence back into the policy registry and embedding model; formalize this as a closed learning loop with a measurable convergence property.
 
-A novel **Cost Prevention Score (CPS)** metric — defined as `CPS = Prevented_Cost / Potential_Cost_Without_System` — provides a single measurable output that quantifies the system's economic value at every stage and enables direct comparison across workload types and cloud providers.
+The fundamental failure mode that PBCP targets is **intent-behavior divergence**: the gap between what a workload was provisioned to do and what it actually does at runtime. Cost waste is a *consequence* of this divergence, not the primary signal. To capture this directly, PBCP introduces a novel **Intent Fidelity Score (IFS)** — defined as the similarity between a workload's declared intent vector and its observed runtime behavior vector — which serves as the primary anomaly and governance signal. A workload with low IFS is exhibiting behavior its provisioning was never designed to support; cost waste follows from that.
+
+Two complementary metrics drive evaluation: **CPS** (`Prevented_Cost / Potential_Cost_Without_System`) quantifies economic impact; **IFS** quantifies behavioral alignment. Together they form the dual-metric reporting standard for all experiments.
 
 This document describes the full system design, data model, experimental plan, and authorship breakdown for the PBCP research implementation.
 
@@ -106,6 +108,34 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
 - **AI / LLM Pipelines** — vector database operations, RAG pipelines, token-intensive LLM calls
 - **Streaming Jobs** — continuous event-processing workloads
 
+### 2.7 Intent-Behavior Divergence — The Fundamental Failure Mode
+
+Cloud governance systems have historically measured waste in dollars and CPU percentages. These are symptoms. The underlying cause is **intent-behavior divergence (IBD)**: the gap between what a workload was provisioned to do and what it actually does at runtime.
+
+Consider: a cluster is provisioned for a "customer churn model retraining job" — 16 nodes, 24-hour budget. The job finishes in 3 hours at 20% utilization. The cluster sits idle. In dollar terms, this is 78% waste. But the root cause is not "CPU < 30%" — it is that the declared intent (large ML training job, full-day budget) diverged from the actual behavior (small ML training job, short duration). Any system that only measures the dollar gap will fire after the waste is already incurred. A system that measures the intent-behavior gap can fire before the first billing event, because the divergence is *predictable from intent* when compared against historically similar workloads.
+
+This reframing yields a new measurable quantity: the **Intent Fidelity Score (IFS)**:
+
+```
+IFS(w) = sim(intent_vector(w), behavior_vector(w))    ∈ [0, 1]
+```
+
+Where `sim` is cosine similarity, `intent_vector` encodes the pre-execution declared properties of the workload (workload type, resource configuration, expected duration, team history), and `behavior_vector` encodes the post-execution observed metrics (actual CPU, memory, duration, idle ratio). A perfectly well-matched workload has IFS = 1.0; a severely misaligned workload approaches 0.
+
+**Cost waste is a consequence of low IFS, not its own primary signal.** This reframing has three practical implications:
+
+1. **Richer anomaly signal.** An ETL job with IFS = 0.24 and CPU = 80% is anomalous — not because it is underutilizing compute, but because its behavior pattern matches an abandoned development cluster, not the declared ETL profile. Dollar-threshold detectors would not fire; IFS-based detection would.
+
+2. **Better learning target.** The policy engine optimizes for IFS improvement over time, not just cost reduction. Policies that raise IFS also reduce waste, but the inverse is not always true (e.g., aggressive blocking raises CPS but can leave IFS undefined for blocked workloads).
+
+3. **A measurable convergence criterion for Phase 3.** The closed learning loop has a formal success condition: the system's population-level IFS should increase over successive generations of workload submissions. If learned policies raise the mean IFS of the workloads they govern, Phase 3 is converging.
+
+| Measurement | Signal Type | What It Captures |
+|---|---|---|
+| CPU utilization | Symptom | Resource consumption rate |
+| Cost waste (USD) | Symptom | Dollar consequence of misalignment |
+| Intent Fidelity Score (IFS) | Root signal | Alignment between declared intent and observed behavior |
+
 ---
 
 ## 3. Design Goals & Principles
@@ -121,6 +151,7 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
 | G5 | Detect anomalies before billing cycle closes | Mean Time to Detection < 15 minutes |
 | G6 | Reduce AI workload (LLM) token waste | ≥ 25% token cost reduction per LLM pipeline |
 | G7 | Attribute untagged resources automatically | ≥ 90% attribution accuracy on untagged resource set |
+| G8 | Maximize intent-behavior alignment (IFS) | Mean IFS ≥ 0.75 at the 90th percentile across governed workloads; Phase 3 learning loop increases population-level IFS over successive generations |
 
 ### 3.2 Design Principles
 
@@ -145,10 +176,14 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
  │  │  Unified Cost Representation (UCR) — cloud-agnostic compute unit       │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                       │                                      │
- │  STAGE 1 ─ INTENT CAPTURE                                                    │
+ │  STAGE 1 ─ INTENT CAPTURE  [PHASE 1 — SIMULATE & PREVENT]                   │
  │  ┌─────────────────────────────────────────────────────────────────────────┐ │
- │  │  intent_model/  ←  workload metadata + description + resource request  │ │
- │  │  WorkloadIntent → structured representation + workload_type vector     │ │
+ │  │  intent_model/  ←  natural-language description + resource request     │ │
+ │  │  IntentInferenceEngine: NLP → workload_type · frequency ·              │ │
+ │  │    data_sensitivity · expected_duration · team_pattern (inferred)      │ │
+ │  │  WorkloadEmbeddingModel: place workload in embedding space →           │ │
+ │  │    retrieve K-nearest historical neighbors → workload-specific priors  │ │
+ │  │  WorkloadIntent → structured representation                            │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                       │ WorkloadIntent                       │
  │  STAGE 2 ─ PRE-EXECUTION SIMULATION (CRITICAL)                               │
@@ -170,7 +205,7 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
  │  │  Policies learned from historical optimal workloads                    │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                       │ approved + right-sized config        │
- │  STAGE 4 ─ RUNTIME AUTO-CORRECTION                                           │
+ │  STAGE 4 ─ RUNTIME AUTO-CORRECTION  [PHASE 2 — MONITOR & CORRECT]           │
  │  ┌─────────────────────────────────────────────────────────────────────────┐ │
  │  │  runtime_optimizer/                                                     │ │
  │  │  Monitor: CPU/memory utilization, idle time, spot availability         │ │
@@ -178,11 +213,13 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
  │  │  Log:     action_taken · cost_prevented → CPS record                   │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                       │ runtime actuals                      │
- │  STAGE 5 ─ MEASUREMENT & LEARNING                                            │
+ │  STAGE 5 ─ MEASUREMENT & LEARNING  [PHASE 3 — LEARN & ADAPT]                │
  │  ┌─────────────────────────────────────────────────────────────────────────┐ │
- │  │  cps_metrics/   → CPS per workload · total prevented · % reduction     │ │
- │  │  policy_engine/ → update policy registry from outcomes                 │ │
- │  │  anomaly_rca/   → detect intent-behavior mismatch → prevention feedback│ │
+ │  │  cps_metrics/   → CPS + IFS per workload · dual-metric roll-up         │ │
+ │  │  policy_engine/ → update policy registry from post-execution outcomes  │ │
+ │  │  anomaly_rca/   → compute IFS · detect IBD → prevention feedback       │ │
+ │  │  intent_model/  → update embedding space with observed behavior        │ │
+ │  │  Convergence:   population-level IFS rises over successive generations │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                                                              │
  │  INTELLIGENCE LAYER (Sreeja)                                                 │
@@ -198,20 +235,30 @@ PBCP governs the following workload types across AWS, Azure, and GCP:
 ### Data Flow Summary
 
 ```
-Workload Submission
+Workload Submission (natural language description + resource request)
       │
       ▼
 [cost_normalizer] → Unified Cost Representation (UCR)
       │
       ▼
-[intent_model] → WorkloadIntent (structured)
+[intent_model / IntentInferenceEngine]
+  NLP extraction: workload_type · frequency · data_sensitivity · expected_duration · team_pattern
       │
       ▼
-[simulation_engine] → SimulationResult {predicted_cost, predicted_waste, intervention}
+[intent_model / WorkloadEmbeddingModel]
+  embed workload → KNN retrieval of K nearest historical neighbors
+  → workload-specific utilization priors (replaces catalog lookup)
+      │
+      ▼
+WorkloadIntent (structured, fields filled from inference + embedding)
+      │
+      ▼
+[simulation_engine] → SimulationResult {predicted_cost, predicted_waste,
+                        correction_cost_model, EV_of_intervention, intervention}
       │
       ├── BLOCK ──────────────────────────────────────────────────→ [cps_metrics] record
       │
-      ├── AUTO-CORRECT → right-sized WorkloadIntent
+      ├── AUTO-CORRECT → right-sized WorkloadIntent (EV > 0 required)
       │         │
       │         ▼
       └── APPROVE → [policy_engine / guardrails] → final enforcement check
@@ -220,13 +267,16 @@ Workload Submission
                   Resource provisioned & running
                           │
                           ▼
-                  [runtime_optimizer] → autonomous corrections → [cps_metrics]
+                  [runtime_optimizer] → autonomous corrections → [cps_metrics + IFS]
                           │
                           ▼
-                  [anomaly_rca / ml_attribution / ai_governance] → intelligence layer
+                  [anomaly_rca] → compute IFS(w) → IBD detection → prevention feedback
+                  [ml_attribution / ai_governance] → intelligence layer
                           │
                           ▼
-                  [policy_engine] → policy registry update (closed loop)
+                  [policy_engine] → policy registry update
+                  [intent_model] → update embedding space with behavior vector
+                  ↑ Phase 3 closed loop: population IFS rises over generations ↑
 ```
 
 ---
@@ -240,15 +290,67 @@ Workload Submission
 
 #### Purpose
 
-Parse and structure workload submission metadata into a `WorkloadIntent` object — the canonical input to every downstream component. In v2.0, the intent model's primary output is a structured data record rather than a raw embedding vector; the policy engine and simulation engine consume structured fields, not similarity scores.
+Transform a raw workload submission — including a natural language description — into a fully-structured `WorkloadIntent` object that all downstream components consume. The key observation motivating this design is that **users routinely over-specify compute and under-specify intent**: they know the cluster size they want but not always the workload semantics the system needs to govern effectively. The intent model inverts this: extract semantic intent from natural language, then derive the right compute from it.
 
-#### Core Data Types
+Two sub-components achieve this: the `IntentInferenceEngine` (NLP extraction) and the `WorkloadEmbeddingModel` (similarity-based prior retrieval).
+
+#### 5.1.1 IntentInferenceEngine — NLP Intent Extraction
+
+The `IntentInferenceEngine` accepts a free-text workload description and extracts structured fields that would otherwise require manual form entry — or would be missing entirely.
+
+**Example extraction:**
+
+```
+Input:  "need a cluster for our weekly customer churn model retraining"
+
+Extracted:
+  workload_type:      ml_training         (inferred from "model retraining")
+  frequency:          weekly              (inferred from "weekly")
+  data_sensitivity:   customer_pii        (inferred from "customer churn" → triggers compliance policy)
+  expected_duration:  3–5 hrs             (retrieved from team's prior ml_training runs matching description)
+  team_pattern:       data_science_team   (matched against team submission history)
+```
+
+**Extraction Pipeline:**
+
+```
+raw_intent: str  (natural language description)
+      │
+      ▼
+[Regex + keyword patterns]  — fast path for explicit signals
+  ("weekly" → frequency=weekly, "customer" → data_sensitivity=customer_pii, ...)
+      │
+      ▼
+[Fine-tuned classifier (DistilBERT, 6-class)]  — workload_type prediction
+  Trained on labeled historical workload descriptions (400 examples per class)
+      │
+      ▼
+[Team history lookup]  — expected_duration estimation
+  Query last 30 submissions from same team + inferred workload_type
+  expected_duration = median(actual_duration) of similar historical runs
+      │
+      ▼
+InferredIntentFields:
+  workload_type_inferred:    WorkloadType   (with confidence score)
+  frequency_inferred:        str            # "hourly" | "daily" | "weekly" | "on_demand"
+  data_sensitivity_inferred: str            # "none" | "internal" | "customer_pii" | "regulated"
+  expected_duration_inferred: float         # hours, from team history
+  team_pattern_match:        str            # matched team profile label
+  inference_confidence:      float          # overall confidence (0.0–1.0)
+```
+
+**Compliance trigger:** when `data_sensitivity_inferred = "customer_pii"` or `"regulated"`, the guardrail layer automatically enforces stricter policies (no spot, mandatory encryption tags, environment locked to `prod`). This is the key benefit of NLP inference: users submitting in natural language automatically receive compliance enforcement they would otherwise have to opt into.
+
+**Conflict resolution:** if the user explicitly provides a field (e.g., `workload_type = "etl"`) that conflicts with the NLP inference (e.g., classifier predicts `ml_training` with confidence 0.88), the system keeps the user-provided value but logs the discrepancy as a low-severity anomaly flag. Discrepancies above a threshold are surfaced to the user for confirmation.
+
+#### 5.1.2 Core Data Types
 
 ```python
 WorkloadType = Literal["etl", "llm_pipeline", "adhoc", "streaming", "ml_training", "batch", "serving"]
 CloudProvider = Literal["aws", "azure", "gcp"]
 Environment = Literal["sandbox", "dev", "test", "staging", "prod"]
 Priority = Literal["low", "medium", "high", "critical"]
+DataSensitivity = Literal["none", "internal", "customer_pii", "regulated"]
 
 @dataclass
 class ResourceConfig:
@@ -263,33 +365,81 @@ class ResourceConfig:
     auto_shutdown_hours: Optional[float] = None
 
 @dataclass
+class InferredIntentFields:
+    workload_type_inferred: Optional[WorkloadType]
+    frequency_inferred: Optional[str]
+    data_sensitivity_inferred: DataSensitivity
+    expected_duration_inferred: Optional[float]
+    team_pattern_match: Optional[str]
+    inference_confidence: float
+
+@dataclass
 class WorkloadIntent:
     intent_id: str                # UUID, auto-generated
-    workload_type: WorkloadType
+    workload_type: WorkloadType   # user-provided or filled from inference
     requested_resources: ResourceConfig
     duration_hours: float
     team: str
     environment: Environment
     priority: Priority = "medium"
-    token_budget: Optional[int] = None   # Required for llm_pipeline
+    data_sensitivity: DataSensitivity = "none"    # filled from inference if not provided
+    frequency: str = "on_demand"                  # filled from inference if not provided
+    token_budget: Optional[int] = None            # Required for llm_pipeline
     tags: dict[str, str] = field(default_factory=dict)
-    raw_intent: str = ""          # original description or config blob
+    raw_intent: str = ""          # original natural language description
+    inferred: Optional[InferredIntentFields] = None   # NLP extraction result
     submitted_at: datetime = field(default_factory=datetime.utcnow)
 ```
 
-#### Intent Catalog
+#### 5.1.3 WorkloadEmbeddingModel — KNN Utilization Priors
 
-A built-in `INTENT_CATALOG` stores typical profiles per workload type, used by the simulation engine as utilization priors:
+The previous design used a static `INTENT_CATALOG` lookup table (e.g., "all ETL workloads have 55% expected utilization"). This is brittle: it cannot generalize to novel workloads and treats a 5 GB ETL job identically to a 500 GB ETL job because both share the same type label.
 
-| Workload Type | Typical Utilization | Optimal Node Range | Auto-Shutdown Required | Spot Eligible |
-|---|---|---|---|---|
-| `etl` | 55% | 2–10 | Yes (≤ 4 hr) | Yes |
-| `adhoc` | 30% | 1–5 | Yes (≤ 2 hr) | Yes |
-| `llm_pipeline` | 80% | 1–4 | Yes (≤ 8 hr) | No |
-| `ml_training` | 85% | 2–16 | Yes (≤ 24 hr) | Yes |
-| `batch` | 60% | 2–8 | Yes (≤ 6 hr) | Yes |
-| `streaming` | 65% | 2–8 | No | No |
-| `serving` | 40% | 2–10 | No | No |
+The `WorkloadEmbeddingModel` replaces this with a learned embedding space:
+
+**Embedding pipeline:**
+
+```
+WorkloadIntent
+      │
+      ▼
+[Feature encoder]
+  Numeric: node_count, vcpu_per_node, memory_gb_per_node, storage_gb, duration_hours
+  Categorical (one-hot): workload_type, cloud_provider, environment, priority
+  Team history: avg_cpu_util, avg_memory_util, avg_duration (last 30 runs for this team)
+      │
+      ▼
+workload_embedding: float[64]   (learned via contrastive training)
+      │
+      ▼
+[FAISS index over historical workload embeddings]
+  K = 10 nearest neighbors
+      │
+      ▼
+Retrieved neighbor set: list[HistoricalWorkloadRecord]
+  Each record: {embedding, actual_cpu_util, actual_memory_util, actual_duration,
+                cost_efficiency_score, workload_type, storage_gb}
+      │
+      ▼
+[Aggregation]
+  utilization_prior = weighted_mean(neighbor.actual_cpu_util, weight=1/distance)
+  duration_prior = weighted_median(neighbor.actual_duration, weight=1/distance)
+  optimal_node_range = percentile-based from K neighbors
+      │
+      ▼
+WorkloadSpecificPrior:
+  expected_utilization: float   ← workload-specific, not class-generic
+  expected_duration_hours: float
+  optimal_node_range: tuple[int, int]
+  spot_eligible: bool           # from neighbor majority vote
+  prior_confidence: float       # function of embedding distance spread
+```
+
+**Why this is better than the catalog:** An ETL job processing 500 GB clusters near other 500 GB ETL jobs in the embedding space, not near a 5 GB ETL job that shares the same type label. The utilization prior for the 500 GB job will reflect the higher compute demands of large-scale ETL, which the catalog cannot represent.
+
+**Cold start handling:** For workloads with no close neighbors (min distance > threshold), the model falls back to class-level catalog statistics and sets `prior_confidence = "low"`. This is flagged in the `SimulationResult` and, if the workload is in `prod`, routes to human review.
+
+**Embedding model training:** Trained offline on the historical workload dataset using a contrastive loss: workloads with similar runtime behavior (IFS > 0.80) are pulled together; workloads with divergent behavior are pushed apart. This ensures behavioral similarity (not just label similarity) drives neighborhood structure. Retrained monthly as Phase 3 accumulates post-execution data.
 
 ---
 
@@ -316,7 +466,8 @@ WorkloadIntent
 predicted_baseline_cost: float
       │
       ▼
-[utilization estimator] ─── workload_type catalog prior
+[utilization estimator] ─── WorkloadSpecificPrior from embedding KNN
+                             (replaces static catalog lookup)
                          +── over-provisioning adjustment
                              (if node_count > optimal_range.max,
                               utilization ∝ 1 / over_factor)
@@ -336,11 +487,19 @@ right_sized_cost: float
 prevented_cost: float = baseline_cost − right_sized_cost
       │
       ▼
-[intervention engine]
-      ├── waste_fraction > 0.50  →  BLOCK       (refuse execution as-requested)
-      ├── waste_fraction > 0.30  →  AUTO-CORRECT (resubmit with right-sized config)
-      ├── waste_fraction > 0.15  →  SUGGEST      (advisory warning)
-      └── else                   →  APPROVE
+[CostOfCorrectionModel] ─── compute correction costs per intervention type
+      │
+      ▼
+[intervention engine — decision-theoretic]
+  EV(BLOCK)        = P(waste|no_action) × waste_cost − P(perm_block) × failure_cost − delay_cost(BLOCK)
+  EV(AUTO_CORRECT) = P(waste|no_action) × waste_cost − P(job_failure|resize) × failure_cost − delay_cost(AUTO_CORRECT)
+  EV(SUGGEST)      = 0  (advisory; no execution impact)
+  EV(APPROVE)      = 0  (baseline)
+      │
+      ├── EV(BLOCK) > max(EV(AUTO_CORRECT), 0)  →  BLOCK
+      ├── EV(AUTO_CORRECT) > 0                   →  AUTO_CORRECT
+      ├── waste_fraction > 0.15                   →  SUGGEST
+      └── else                                    →  APPROVE
 ```
 
 #### SimulationResult Schema
@@ -358,10 +517,54 @@ class SimulationResult:
     right_sized_resources: Optional[ResourceConfig]
     right_sized_cost: Optional[float]
     prevented_cost: Optional[float]   # predicted_cost − right_sized_cost
+    ev_block: float                   # expected value of BLOCK intervention
+    ev_auto_correct: float            # expected value of AUTO_CORRECT intervention
+    correction_delay_hours: float     # estimated delay from intervention
+    job_failure_probability: float    # P(failure | right-sizing applied)
     explanation: str                  # human-readable rationale
     confidence: float                 # 0.0–1.0
+    prior_confidence: str             # "high" | "medium" | "low" from embedding KNN
     simulated_at: datetime
 ```
+
+#### CostOfCorrectionModel
+
+AUTO-CORRECT is not free. Resubmitting a job delays the team; downscaling at runtime risks job failure; blocking a critical production job has organizational cost that cannot be expressed in dollars alone. The `CostOfCorrectionModel` makes these costs explicit so the intervention engine reasons about tradeoffs rather than applying a fixed waste-fraction threshold.
+
+```
+Expected Value of Intervention =
+    P(waste | no_action) × waste_cost
+  − P(job_failure | correction) × failure_cost
+  − delay_cost(correction_type)
+```
+
+**Parameter estimation:**
+
+| Parameter | Source | Default |
+|---|---|---|
+| `P(waste | no_action)` | waste_fraction from simulation | Direct from prediction |
+| `waste_cost` | `predicted_waste` (USD) | Direct from cost model |
+| `P(job_failure | AUTO_CORRECT)` | Historical failure rate for this workload type at target utilization | Loaded from `correction_failure_rates.yml` per workload_type |
+| `failure_cost` | `priority`-weighted organizational cost | Configurable: `low=10`, `medium=50`, `high=200`, `critical=2000` (USD-equivalent) |
+| `delay_cost(BLOCK)` | team_sla × estimated_resubmit_delay | Default: 1 hr delay × $25/hr team cost |
+| `delay_cost(AUTO_CORRECT)` | right-sizing latency (~5 min) | Default: $2 |
+| `delay_cost(SUGGEST)` | 0 (advisory only) | — |
+
+```python
+class CostOfCorrectionModel:
+    def ev_block(intent: WorkloadIntent, waste_cost: float) -> float:
+        p_waste = waste_fraction
+        p_perm_block = p_block_leads_to_failure(intent)
+        return p_waste * waste_cost - p_perm_block * failure_cost(intent) - delay_cost_block(intent)
+
+    def ev_auto_correct(intent: WorkloadIntent, waste_cost: float,
+                        right_sized: ResourceConfig) -> float:
+        p_waste = waste_fraction
+        p_failure = correction_failure_rate[intent.workload_type]
+        return p_waste * waste_cost - p_failure * failure_cost(intent) - delay_cost_auto_correct()
+```
+
+**Why this differentiates from existing systems:** No cloud governance tool models the cost of the intervention itself. The result of ignoring correction cost is systematic over-blocking: a naive threshold-based system blocks everything above 50% waste without asking whether the block might cause a job failure worth more than the waste it prevented. The `CostOfCorrectionModel` directly addresses the practical objection — "your system blocks too aggressively" — with a principled answer: it blocks when and only when `EV(BLOCK) > EV(AUTO_CORRECT) > 0`.
 
 #### CloudCostModel
 
@@ -379,14 +582,18 @@ class CloudCostModel:
         return storage_per_gb_hour[cloud_provider] * storage_gb * hours
 ```
 
-#### Thresholds (configurable in `config/simulation_config.yml`)
+#### Decision Parameters (configurable in `config/simulation_config.yml`)
 
-| Parameter | Default | Meaning |
+| Parameter | Default | Role |
 |---|---|---|
-| `block_fraction` | 0.50 | waste > 50% → BLOCK |
-| `auto_correct_fraction` | 0.30 | waste > 30% → AUTO_CORRECT |
-| `suggest_fraction` | 0.15 | waste > 15% → SUGGEST |
-| `target_utilization` | 0.70 | right-sizing target after correction |
+| `suggest_fraction` | 0.15 | waste > 15% → SUGGEST (advisory, no EV calculation needed) |
+| `target_utilization` | 0.70 | right-sizing target for AUTO_CORRECT |
+| `ev_block_min` | 0.0 | EV(BLOCK) must exceed this to trigger BLOCK |
+| `ev_auto_correct_min` | 0.0 | EV(AUTO_CORRECT) must exceed this to trigger AUTO_CORRECT |
+| `failure_cost_critical` | 2000 | USD-equivalent failure cost for `critical` priority workloads |
+| `correction_failure_rates` | per-type YAML | P(job failure | right-sizing) by workload_type |
+
+The waste-fraction thresholds (`block_fraction`, `auto_correct_fraction`) from earlier designs are removed. The EV model subsumes them: for a workload where `waste_fraction = 0.60` but `priority = critical` and `p_failure = 0.40`, `EV(BLOCK)` may be negative — meaning blocking is the wrong choice despite high predicted waste. The system will AUTO_CORRECT or SUGGEST instead.
 
 #### Latency & Feasibility
 
@@ -402,14 +609,19 @@ For low-risk workload types (environment = `sandbox` or `dev`, waste confidence 
 
 ---
 
-### 5.3 Intent → Policy Learning System
+### 5.3 Intent → Policy Learning System (Phase 3 — Learn & Adapt)
 
 **Owner:** Keerthi Rapolu
 **Location:** `/policy_engine/`
 
 #### Purpose
 
-Replace static rule-based guardrails with a **learned policy registry** derived from historically optimal workloads. Policies are not advisory — they are enforced before provisioning.
+Replace static rule-based guardrails with a **learned policy registry** derived from historically optimal workloads, and close the loop so that every governed execution makes Phase 1 smarter. This component is the system's most defensible long-term contribution: Phases 1 and 2 prevent waste today; Phase 3 determines whether the system improves over time or remains static.
+
+Phase 3 runs after every batch of completed workloads and has three jobs:
+1. Update policy thresholds from observed cost-efficiency data (`PolicyLearner`)
+2. Feed anomaly signals (low-IFS workloads) back into the policy registry (`AnomalyPreventionFeedback`)
+3. Update the `WorkloadEmbeddingModel` with new `(intent_vector, behavior_vector)` pairs so future KNN retrievals are more accurate
 
 #### Evolution from v1.0
 
@@ -485,6 +697,54 @@ class PolicyRegistry:
     def remove(policy_id: str) -> None
     def export() -> list[dict]              # for persistence / audit
 ```
+
+#### Phase 3 Closed-Loop Update Procedure
+
+After each batch of completed workloads (daily cadence in deployment; per-experiment-epoch in evaluation):
+
+```
+Completed workload records (runtime_metrics + cost_records + ifs_records)
+      │
+      ▼
+[PolicyLearner.update()]
+  Recompute percentile thresholds from 90-day rolling window
+  Emit updated policies if threshold drift > 10% from current
+      │
+      ▼
+[AnomalyPreventionFeedback.flush()]
+  For each AnomalyRecord with IFS < θ_ifs:
+    Compare anomaly conditions against active policies
+    Emit PolicySuggestion if no policy covers the scenario
+    PolicySuggestion → PolicyRegistry.upsert() if confidence ≥ 0.80
+      │
+      ▼
+[WorkloadEmbeddingModel.update()]
+  Add (intent_vector, behavior_vector) pairs for completed workloads
+  Retrain FAISS index (incremental update; full retrain monthly)
+```
+
+#### Convergence Analysis
+
+The Phase 3 loop is only valuable if it measurably improves the system over time. The convergence property is defined as follows:
+
+**Definition.** Let $\text{IFS}_t$ denote the population-level mean IFS of all workloads governed in generation $t$ (a generation = one batch cycle). The Phase 3 learning loop is **converging** if:
+
+$$\mathbb{E}[\text{IFS}_{t+1}] > \mathbb{E}[\text{IFS}_t] \quad \text{for sufficiently many } t$$
+
+**What "converging" means empirically:** as the policy registry accumulates learned policies and the embedding model accumulates behavioral observations, the system's interventions should produce workloads that are better aligned with their declared intent — higher IFS on average. A system that is not converging is either (a) over-correcting (interventions introduce misalignment by right-sizing to the wrong configuration) or (b) under-learning (policy updates are too conservative to affect behavior).
+
+**Measurement protocol for Experiment 6:**
+
+1. Divide the synthetic dataset into 10 equal generations (each = 50 workloads)
+2. Feed generations sequentially through the system; after each, run Phase 3 update
+3. Measure mean IFS of the generation's workloads *before* and *after* Phase 3 updates the model for the next generation
+4. Plot `mean_IFS` vs. generation index; test for monotone improvement
+5. Report: number of generations until learned policies outperform built-in policies on held-out workloads (sample efficiency); IFS gain attributable to embedding model updates vs. policy updates (ablation)
+
+**Boundary conditions:**
+- If `min_samples_to_learn < 10` for a workload type, Phase 3 defers to built-in policies for that type (no threshold update)
+- Policy updates with `confidence < 0.80` are logged as pending and not applied until a second supporting batch confirms them
+- The `rl_optimized` policy source (multi-armed bandit extension) is reserved for future work once the percentile baseline converges; the `Policy.source` field already carries this value
 
 ---
 
@@ -597,12 +857,12 @@ For evaluation against synthetic data, the runtime optimizer runs as an event-dr
 
 ---
 
-### 5.6 Cost Prevention Score (CPS)
+### 5.6 Cost Prevention Score (CPS) + Intent Fidelity Score (IFS) — Dual-Metric Reporting
 
 **Owner:** Keerthi Rapolu
 **Location:** `/cps_metrics/`
 
-#### Definition
+#### CPS Definition
 
 ```
 CPS = Prevented_Cost / Potential_Cost_Without_System
@@ -613,6 +873,40 @@ Where:
 - `Prevented_Cost` = `Potential_Cost_Without_System` − `Actual_Cost_With_System`
 
 A CPS of 0.35 means the system prevented 35% of what would have been billed without it.
+
+#### IFS Definition
+
+```
+IFS(w) = cosine_similarity(intent_vector(w), behavior_vector(w))    ∈ [0, 1]
+```
+
+Where:
+- `intent_vector(w)` is computed from the pre-execution `WorkloadIntent`: encodes workload_type, resource configuration (node count, instance size), declared duration, priority, and team history profile
+- `behavior_vector(w)` is computed from the post-execution `RuntimeMetrics`: encodes actual CPU utilization, memory utilization, actual duration, idle_time_ratio, cost delta percentage, and actual_vs_expected_duration ratio
+
+Both vectors are L2-normalized before computing cosine similarity. An IFS of 1.0 indicates perfect intent-behavior alignment; an IFS near 0.0 indicates the workload's observed behavior is orthogonal to what was declared.
+
+**IFS interpretation guide:**
+
+| IFS Range | Interpretation | Typical Root Cause |
+|---|---|---|
+| 0.85–1.0 | Well-aligned | No action needed |
+| 0.65–0.85 | Minor divergence | Slight over-provisioning or runtime variance |
+| 0.40–0.65 | Significant divergence | Systematic over-provisioning; workload ran shorter than expected |
+| < 0.40 | Severe divergence | Workload behavior inconsistent with declared type (potential misclassification, abandoned job, or runaway) |
+
+**IFS as a richer anomaly signal than CPU thresholds:** An ETL job with IFS = 0.28 and CPU utilization = 85% is anomalous even though its CPU is high. Its behavior vector (very short actual duration, high cost delta, low memory) does not match the ETL intent vector (medium-long duration, balanced CPU/memory, cost proportional to declared size). A CPU threshold detector would not fire. IFS detection would.
+
+#### Relationship Between CPS and IFS
+
+CPS and IFS are complementary, not redundant:
+
+| Metric | What It Measures | What It Misses |
+|---|---|---|
+| CPS | Economic value: fraction of potential waste prevented | Does not capture whether governed workloads are better aligned — a system can achieve high CPS by blocking aggressively (low ESR) |
+| IFS | Behavioral alignment: how closely workload behavior matched intent | Does not directly express dollar value |
+
+Together they give a complete picture: a system with high CPS and high IFS is both cost-effective and producing well-aligned workloads. A system with high CPS but low IFS is preventing waste through aggressive intervention but not improving the underlying alignment problem. The Phase 3 learning loop is specifically designed to raise IFS over time.
 
 #### Execution Success Rate (ESR) — Constraint Metric
 
@@ -642,48 +936,58 @@ Both CPS and ESR are tracked per workload and reported in every experiment summa
 | `runtime` | Runtime optimizer downscale/terminate | Terminated idle cluster 2 hours early |
 | `ai_workload` | AI governance token/embedding reduction | Compressed prompt; reduced tokens by 40% |
 
-#### CPSRecord Schema
+#### Dual-Metric Record Schema
 
 ```python
 @dataclass
-class CPSRecord:
+class CPSIFSRecord:
     record_id: str
     intent_id: str
     run_id: Optional[str]
     stage: Literal["pre_provision", "runtime", "ai_workload"]
+    # CPS fields
     potential_cost: float            # cost without system
     actual_cost: float               # cost with system
     prevented_cost: float            # potential − actual
     cps: float                       # prevented / potential
+    source_action: str               # e.g., "AUTO_CORRECT", "terminate", "token_budget"
+    # IFS fields (populated post-execution; None for pre_provision records)
+    intent_vector: Optional[list[float]]
+    behavior_vector: Optional[list[float]]
+    ifs: Optional[float]             # cosine_similarity(intent_vector, behavior_vector)
+    ifs_category: Optional[str]      # "well_aligned" | "minor" | "significant" | "severe"
+    # Shared metadata
     workload_type: str
     cloud_provider: str
     team: str
     environment: str
     recorded_at: datetime
-    source_action: str               # e.g., "AUTO_CORRECT", "terminate", "token_budget"
     explanation: str
 ```
 
-#### Aggregate CPS Reporting
+#### Aggregate Reporting
 
-The `PreventionTracker` accumulates `CPSRecord` entries and exposes:
+The `PreventionTracker` accumulates `CPSIFSRecord` entries and exposes:
 
 ```python
 class PreventionTracker:
-    def add(record: CPSRecord) -> None
+    def add(record: CPSIFSRecord) -> None
     def total_prevented(stage: Optional[str] = None) -> float
     def aggregate_cps(stage: Optional[str] = None) -> float
-    def by_workload_type() -> dict[str, dict]   # type → {cps, prevented, count}
+    def mean_ifs(generation: Optional[int] = None) -> float    # for convergence tracking
+    def ifs_distribution() -> dict                             # percentile breakdown
+    def by_workload_type() -> dict[str, dict]  # type → {cps, ifs, prevented, count}
     def by_team() -> dict[str, dict]
-    def summary() -> dict                        # full roll-up for experiment output
+    def convergence_curve() -> list[dict]      # mean_ifs per generation for Phase 3 analysis
+    def summary() -> dict                      # full roll-up for experiment output
 ```
 
-#### CPS Exposure
+#### Metric Exposure
 
-CPS is exposed at three levels:
+Both CPS and IFS are exposed at three levels:
 - **Per-workload** — attached to every `SimulationResult` and `CorrectionAction`
-- **Per-experiment** — summarized in experiment output CSVs
-- **System-level** — rolling 30-day aggregate surfaced in evaluation reports
+- **Per-experiment** — summarized in experiment output CSVs with both metrics side-by-side
+- **System-level** — rolling 30-day aggregate; IFS convergence curve for Phase 3 visualization
 
 ---
 
@@ -794,43 +1098,54 @@ The attribution module exposes a single `classify(resource_record)` interface co
 
 ---
 
-### 5.9 Semantic Anomaly Detection & Root Cause Analysis
+### 5.9 Intent-Behavior Divergence Detection & Root Cause Analysis
 
 **Owner:** Sreeja Katta
 **Location:** `/anomaly_rca/`
 
 #### Purpose
 
-Detect workloads whose runtime behavior does not match their declared intent, generate explainable root cause analysis using retrieval-augmented reasoning, and feed anomaly signals back into the prevention system to continuously improve policies.
+Measure intent-behavior divergence for every completed workload using the Intent Fidelity Score (IFS), generate explainable root cause analysis for low-IFS workloads via retrieval-augmented reasoning, and feed IBD signals back into Phase 3 to continuously improve pre-execution prevention. Cost waste is the downstream consequence this component reports; IFS is the root signal it detects.
 
 #### Evolution from v1.0
 
 | v1.0 | v2.0 |
 |---|---|
-| Intent vs. behavior cosine distance | Same, plus ML attribution context |
-| RAG-based root cause analysis | Same, plus structured cause categories |
-| Anomaly alert emitted | Anomaly → prevention feedback loop → policy update |
-| Threshold detector as baseline | ML attribution model improves untagged anomaly precision |
+| Intent vs. behavior cosine distance | Same metric, now formalized as IFS and computed for all workloads |
+| RAG-based root cause analysis | Same, plus IFS-stratified cause categories |
+| Anomaly alert emitted | Low-IFS record → prevention feedback loop → policy update + embedding update |
+| Threshold detector as baseline | ML attribution model improves untagged IFS precision |
+| `anomaly_score` field | Renamed to `ifs`; cost_impact is derived from IFS severity, not standalone signal |
 
-#### Anomaly Detection Model
+#### IBD Detection Model
+
+IFS is computed for every completed workload (not just detected anomalies). A workload is flagged as exhibiting IBD when IFS falls below a configurable threshold:
 
 ```
-Intent Vector (pre-execution)
+Intent Vector (pre-execution, from WorkloadIntent)
         +
-Behavior Vector (post-execution: normalize runtime metrics → vector)
+Behavior Vector (post-execution, from RuntimeMetrics)
         │
         ▼
-cosine_distance(intent_vector, behavior_vector)
+IFS(w) = cosine_similarity(intent_vector, behavior_vector)    ∈ [0, 1]
         │
-  distance > θ_anomaly  →  AnomalyRecord (flagged)
-  distance ≤ θ_anomaly  →  normal execution
+  IFS < θ_ifs (default: 0.65)  →  AnomalyRecord (IBD flagged)
+  IFS ≥ θ_ifs                   →  CPSIFSRecord (normal; IFS logged, no alert)
 ```
 
-**Behavior vector** encodes:
+**Behavior vector** encodes (identical feature set to Section 5.6):
 ```python
 f(cpu_util_avg, memory_util_avg, runtime_minutes, idle_time_ratio,
   cost_delta_pct, actual_vs_expected_duration_ratio)
 ```
+
+**Why IFS is richer than CPU thresholds:**
+
+| Scenario | CPU threshold detector | IFS detector |
+|---|---|---|
+| ETL job, 85% CPU, finishes 10× faster than declared | Not flagged (high CPU is "good") | Flagged — behavior vector (short duration, cost delta) diverges from ETL intent |
+| ML training, 20% CPU, 500 GB actual vs 5 GB expected | Flagged (low CPU) | Flagged — and correctly categorized as data_volume_spike, not over_provisioned |
+| Streaming job, 65% CPU, normal duration | Not flagged | Not flagged (IFS = 0.91) |
 
 #### ML Attribution Integration
 
@@ -842,13 +1157,14 @@ class AnomalyRecord:
     anomaly_id: str
     intent_id: str
     run_id: str
-    anomaly_score: float              # cosine distance (intent vs. behavior)
-    is_anomaly: bool
+    ifs: float                        # IFS(w): primary signal (cosine similarity)
+    ifs_category: str                 # "minor" | "significant" | "severe"
+    is_ibd_flagged: bool              # IFS < θ_ifs
     attributed_team: str              # from tags OR ml_attribution
     attributed_workload_type: str
     attribution_confidence: float     # 1.0 if tagged, ML confidence if untagged
     root_cause_category: str          # from RAG-RCA
-    estimated_cost_impact: float
+    estimated_cost_impact: float      # derived from IFS severity + predicted_waste
     detection_lag_minutes: int
     prevention_feedback_generated: bool
 ```
@@ -1197,9 +1513,9 @@ The workload distributions (over-provisioning rates, utilization variance by job
 
 ---
 
-### Experiment 5 — System-Level CPS Roll-Up
+### Experiment 5 — System-Level Dual-Metric Roll-Up (CPS + IFS)
 
-**Goal:** Report aggregate CPS across all stages and workload types to establish the system's total economic impact.
+**Goal:** Report aggregate CPS and IFS across all stages and workload types, establishing both the system's economic impact and its behavioral alignment performance.
 
 **Owner:** Joint (Keerthi + Sreeja)
 
@@ -1210,6 +1526,7 @@ Total workloads evaluated:        500
   Runtime corrections:            112  (22%)
   AI governance actions:           48   (9%)
 
+── CPS (Economic Impact) ──────────────────────────────────────────
 Total potential cost:          $94,200
 Total actual cost:             $61,230
 Total prevented cost:          $32,970
@@ -1227,7 +1544,69 @@ CPS by workload type:
   adhoc:           0.38
   llm_pipeline:    0.33
   ml_training:     0.28
+
+── IFS (Behavioral Alignment) ─────────────────────────────────────
+Mean IFS (system-governed workloads):    0.79
+Mean IFS (baseline, no system):          0.54
+IBD-flagged workloads (IFS < 0.65):      87 / 500  (17%)
+  Caught pre-execution by simulation:    52 / 87   (60%)
+  Caught at runtime by RCA:              35 / 87   (40%)
+
+IFS by workload type:
+  etl:             0.81
+  adhoc:           0.76
+  ml_training:     0.83
+  llm_pipeline:    0.72
+  streaming:       0.80
 ```
+
+---
+
+### Experiment 6 — Phase 3 Convergence Study
+
+**Goal:** Demonstrate that the closed learning loop improves population-level IFS across successive generations of workload submissions, and measure how many workloads are needed before learned policies outperform built-in policies.
+
+**Owner:** Keerthi Rapolu
+
+**Design:**
+
+| Setting | Value |
+|---|---|
+| Total workloads | 500 (same dataset as Exp 5) |
+| Generations | 10 (50 workloads per generation) |
+| Phase 3 update cadence | After each generation |
+| Random seeds | 5× (seeds 42–46) for confidence intervals |
+
+**Scenarios evaluated:**
+
+- **Scenario A — Full Phase 3:** PolicyLearner + AnomalyPreventionFeedback + EmbeddingModel update all active
+- **Scenario B — Policy update only:** PolicyLearner + AnomalyPreventionFeedback active; embedding model frozen after generation 1
+- **Scenario C — Embedding update only:** Embedding model updating; policy registry frozen at built-in policies
+- **Scenario D — No Phase 3:** Static built-in policies only; embedding model frozen (baseline)
+
+**Expected output per scenario:**
+
+```
+Generation:      1     2     3     4     5     6     7     8     9    10
+─────────────────────────────────────────────────────────────────────────
+Full Phase 3:   0.54  0.59  0.63  0.68  0.72  0.75  0.77  0.78  0.79  0.80
+Policy only:    0.54  0.58  0.61  0.64  0.67  0.69  0.70  0.71  0.71  0.72
+Embedding only: 0.54  0.57  0.61  0.64  0.67  0.69  0.71  0.73  0.74  0.75
+No Phase 3:     0.54  0.54  0.54  0.54  0.54  0.54  0.54  0.54  0.54  0.54
+```
+
+**Key questions the experiment answers:**
+
+1. **Does the loop converge?** Is mean IFS monotonically increasing across generations for Full Phase 3?
+2. **Sample efficiency:** In which generation do learned policies first outperform built-in policies on held-out workloads?
+3. **Component contribution:** What fraction of IFS gain comes from policy updates vs. embedding updates? (Scenario B vs. C vs. Full)
+4. **CPS impact:** Does improving IFS also improve CPS, or do they trade off? (Are high-IFS interventions also cost-effective?)
+
+**Metrics:**
+- Mean IFS per generation (primary convergence signal)
+- CPS per generation (to verify CPS is not sacrificed as IFS improves)
+- Policy coverage rate (fraction of workloads governed by ≥ 1 active learned policy, by generation)
+- Embedding retrieval precision@10 (fraction of K neighbors with matching workload_type, by generation)
 
 ---
 
@@ -1239,6 +1618,7 @@ CPS by workload type:
 | **Rule-Based Policies** | Fixed rules (e.g., "large cluster for ML"); no learning | Exp 1, 3 |
 | **Threshold Anomaly Detector** | Flag when CPU < 30% OR idle > 20 min | Exp 3 |
 | **No AI Governance** | LLM pipelines run without token budget enforcement | Exp 4 |
+| **No Phase 3 (frozen)** | Static built-in policies; embedding model frozen after generation 1 | Exp 6 |
 
 ---
 
@@ -1262,15 +1642,18 @@ iacg/
 │   ├── sample/                      # Committed sample (100 workloads)
 │   └── full/                        # .gitignore'd; generated locally
 │
-├── intent_model/                    # Keerthi — workload intent parsing
-│   ├── workload_intent.py           # WorkloadIntent, ResourceConfig data types
-│   ├── intent_catalog.py            # IntentProfile, INTENT_CATALOG
+├── intent_model/                    # Keerthi — workload intent parsing + inference
+│   ├── workload_intent.py           # WorkloadIntent, ResourceConfig, InferredIntentFields
+│   ├── intent_inference.py          # IntentInferenceEngine: NLP extraction pipeline
+│   ├── workload_embedding.py        # WorkloadEmbeddingModel: FAISS KNN + WorkloadSpecificPrior
+│   ├── intent_catalog.py            # IntentProfile, INTENT_CATALOG (fallback for cold start)
 │   └── __init__.py
 │
 ├── simulation_engine/               # Keerthi — pre-execution simulation (CRITICAL)
 │   ├── cost_model.py                # CloudCostModel; per-provider pricing logic
 │   ├── simulator.py                 # PreExecutionSimulator; full simulation pipeline
-│   ├── intervention.py              # InterventionEngine; BLOCK/AUTO_CORRECT/SUGGEST
+│   ├── intervention.py              # InterventionEngine; EV-based BLOCK/AUTO_CORRECT/SUGGEST
+│   ├── correction_cost_model.py     # CostOfCorrectionModel; EV formula + failure rates
 │   └── __init__.py
 │
 ├── policy_engine/                   # Keerthi — learned policy registry + enforcement
@@ -1292,9 +1675,10 @@ iacg/
 │   ├── normalizer.py                # CrossCloudNormalizer; UnifiedCostRecord
 │   └── __init__.py
 │
-├── cps_metrics/                     # Keerthi — Cost Prevention Score tracking
+├── cps_metrics/                     # Keerthi — CPS + IFS dual-metric tracking
 │   ├── cps_calculator.py            # CPSCalculator; per-record CPS computation
-│   ├── prevention_tracker.py        # PreventionTracker; aggregate roll-up
+│   ├── ifs_calculator.py            # IFSCalculator; cosine similarity (intent vs behavior)
+│   ├── prevention_tracker.py        # PreventionTracker; aggregate roll-up + convergence curve
 │   └── __init__.py
 │
 ├── ml_attribution/                  # Sreeja — ML-based resource tagging
@@ -1321,13 +1705,15 @@ iacg/
 └── experiments/                     # Shared
     ├── exp1_pre_provision.py        # Keerthi — over-provisioned ETL scenario
     ├── exp2_runtime_prevention.py   # Keerthi — idle cluster + underutil + runaway
-    ├── exp3_anomaly_detection.py    # Sreeja  — anomaly detection + ML attribution
+    ├── exp3_anomaly_detection.py    # Sreeja  — IBD/IFS detection + ML attribution
     ├── exp4_ai_workload.py          # Sreeja  — LLM token governance
-    ├── exp5_system_cps_rollup.py    # Joint   — aggregate CPS across all stages
+    ├── exp5_system_rollup.py        # Joint   — aggregate CPS + IFS dual-metric
+    ├── exp6_phase3_convergence.py   # Keerthi — Phase 3 IFS convergence study
     └── baselines/
         ├── static_provisioning.py
         ├── rule_based_policies.py
-        └── threshold_detector.py
+        ├── threshold_detector.py
+        └── no_phase3_frozen.py      # Phase 3 baseline: frozen policies + embedding
 ```
 
 ---
@@ -1353,8 +1739,12 @@ iacg/
 
 **Key Research Contributions:**
 - Definition and formalization of the Cost Prevention Score (CPS) metric
-- Pre-execution simulation methodology for cloud workload cost prediction
+- **Intent Fidelity Score (IFS):** novel measurable quantity for intent-behavior alignment; IFS as primary governance signal with cost waste as derived consequence
+- Pre-execution simulation methodology with workload-specific utilization priors (embedding-based KNN, replaces static catalog)
+- **NLP intent inference engine:** extracts workload semantics (type, frequency, data sensitivity, duration) from natural language descriptions; first tool to flip the over-specify-compute / under-specify-intent pattern
 - Intent → learned policy framework with enforcement semantics
+- **Cost-of-Correction model:** decision-theoretic intervention engine (EV formula); no existing governance system models intervention cost
+- **Phase 3 closed-loop learning:** formal convergence criterion (population-level IFS improvement); quantified learning curve showing how many workloads until learned policies outperform built-in
 
 ---
 
@@ -1420,22 +1810,37 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 ### Open Questions
 
-1. **Simulation accuracy vs. cold-start:** The utilization estimator relies on workload type priors from `INTENT_CATALOG`. For novel workload types not in the catalog, utilization estimates will be inaccurate. Consider adding a "low confidence" flag to `SimulationResult` when the workload type is unseen, and routing these to a human review path.
+1. **NLP intent inference accuracy on out-of-distribution descriptions:** The `IntentInferenceEngine` is trained on labeled historical workload descriptions. For novel phrasing (e.g., new teams, unusual domain terminology), inference confidence may be low. The `InferredIntentFields.inference_confidence` field handles this at runtime (low confidence → route to human confirmation), but the DistilBERT classifier's OOD behavior should be characterized explicitly. Consider an active learning setup where low-confidence inferences are flagged for labeling and used to fine-tune the model incrementally.
 
-2. **Policy learning convergence:** The `PolicyLearner` requires `min_samples_to_learn = 10` historical workloads per type before emitting a learned policy. In early deployment (sparse history), the system relies entirely on built-in policies. This should be documented as a deployment ramp-up constraint.
+2. **KNN cold start for new workload categories:** The `WorkloadEmbeddingModel` falls back to catalog statistics when nearest-neighbor distance exceeds a threshold. In early deployment (< 50 historical workloads per type), most retrievals will be catalog fallbacks. The `prior_confidence` field in `SimulationResult` exposes this state, but the paper should quantify how many workloads per type are needed before KNN priors outperform catalog priors (Experiment 6 measures this for IFS; a parallel analysis for utilization prediction accuracy is warranted).
 
-3. **CPS gaming risk — resolved via ESR:** The Execution Success Rate (ESR) constraint metric directly addresses this. Valid CPS = CPS × ESR means that aggressive blocking lowers ESR and therefore lowers Valid CPS. The hard constraint ESR ≥ 0.95 is reported in every experiment alongside CPS; a result that achieves high CPS but violates the ESR constraint is considered a failed configuration, not a success.
+3. **IFS threshold calibration (θ_ifs):** The IBD detection threshold of 0.65 is a design choice, not a learned value. Too high a threshold will flood the prevention feedback loop with false positives; too low will miss genuine divergences. The paper should include a precision-recall curve over θ_ifs on the injected anomaly set (Experiment 3 extended) to justify the default and document the tradeoff.
 
-4. **Cross-team policy sharing:** The policy registry is currently global (shared across teams). This enables broader learning but may surface organization-specific constraints as false violations. Consider a `scope` field on `Policy` (`global` vs `team_scoped`).
+4. **CPS gaming risk — resolved via ESR:** The Execution Success Rate (ESR) constraint metric directly addresses this. Valid CPS = CPS × ESR means that aggressive blocking lowers ESR and therefore lowers Valid CPS. The hard constraint ESR ≥ 0.95 is reported in every experiment alongside CPS; a result that achieves high CPS but violates the ESR constraint is considered a failed configuration, not a success.
 
-5. **RAG-RCA LLM dependency:** The RAG-based root cause analysis requires an LLM at inference time. For fully offline evaluation, Mistral-7B (local) should be the default; the design should not require OpenAI API availability for reproducibility.
+5. **Cost-of-correction parameter estimation:** The `CostOfCorrectionModel` uses configurable failure rates and team cost parameters. In real deployment, these would be estimated from organizational data; in the synthetic evaluation, they are set from defaults. The paper should include a sensitivity analysis: how much do results change if `failure_cost(critical)` varies from $500 to $5000? If results are sensitive to these parameters, the model needs better grounding.
+
+6. **Cross-team policy sharing:** The policy registry is currently global (shared across teams). This enables broader learning but may surface organization-specific constraints as false violations. Consider a `scope` field on `Policy` (`global` vs `team_scoped`).
+
+7. **RAG-RCA LLM dependency:** The RAG-based root cause analysis requires an LLM at inference time. For fully offline evaluation, Mistral-7B (local) should be the default; the design should not require OpenAI API availability for reproducibility.
 
 ### Suggested Additions for Final Paper
 
 - **Confidence intervals on all metrics** — run each experiment 5× with different random seeds (42, 43, 44, 45, 46) and report mean ± std. Required for publication-grade claims.
-- **Ablation study** — evaluate the system with individual components disabled: (a) simulation only, no policy engine; (b) policy only, no simulation; (c) no runtime optimizer; (d) no ML attribution. This isolates each component's CPS contribution.
-- **Latency overhead measurement** — report p50/p99 latency of the pre-execution simulation gate; this is a practical adoption barrier worth quantifying.
+- **Extended ablation study** — evaluate with components disabled: (a) no NLP inference (form-fill only); (b) catalog priors vs. KNN priors; (c) EV intervention model vs. waste-fraction thresholds; (d) no Phase 3 learning (frozen policies). Isolates each novel contribution's delta.
+- **Latency overhead measurement** — report p50/p99 latency of the pre-execution simulation gate including NLP inference and embedding retrieval; this is a practical adoption barrier worth quantifying.
 - **Policy coverage analysis** — what fraction of workloads are governed by at least one active policy? Low coverage = low prevention potential.
+- **IFS vs. CPS tradeoff curve** — for different θ_ifs values and correction aggressiveness settings, plot IFS against CPS to characterize the Pareto frontier. A system designer would use this to choose an operating point.
+- **Summary table for paper introduction** — the five improvements in this design round can be summarized as a differentiation table contrasting the current design against prior work:
+
+| Prior Design | This Design | Why It Differentiates |
+|---|---|---|
+| Intent = form-fill metadata | Intent = NLP-inferred semantics | No existing governance tool extracts intent from natural language |
+| Catalog priors for utilization | Workload embedding space + KNN retrieval | Workload-specific priors, not class-generic averages |
+| Cost waste as primary signal | Intent-Behavior Divergence (IFS) as primary signal | Novel measurable quantity; cost waste is a derived consequence |
+| AUTO-CORRECT treated as free | Intervention has a cost model (EV formula) | Decision-theoretic, not heuristic; addresses "blocks too aggressively" objection |
+| Closed loop mentioned | Closed loop formalized with convergence analysis | Makes Phase 3 a falsifiable research claim, not an implementation detail |
+| CPS metric only | CPS + IFS dual-metric reporting | Richer evaluation story; IFS measures what CPS alone cannot |
 
 ---
 
