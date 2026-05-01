@@ -354,6 +354,8 @@ InferredIntentFields:
 
 **Conflict resolution:** if `type_mismatch = True` with `type_mismatch_confidence ≥ 0.85`, the system surfaces a confirmation prompt before proceeding rather than silently accepting the declared type. The user can override the inference (their declared type wins) or accept the correction. Either choice is logged; accepted corrections feed back into the classifier's training set.
 
+**Downstream consequence:** regardless of how the type conflict is resolved, when `type_mismatch = True` the simulation engine retrieves KNN utilization priors using *both* the declared type and the inferred type, blends them weighted by `(1 - type_mismatch_confidence)` for declared and `type_mismatch_confidence` for inferred, and reduces `SimulationResult.confidence` to reflect the ambiguity — making the system more conservative (lower `EV(AUTO_CORRECT)`, higher probability of routing to SUGGEST or human escalation) precisely when the workload's identity is uncertain.
+
 #### 5.1.2 Core Data Types
 
 ```python
@@ -1357,7 +1359,7 @@ class AIWorkloadMetrics:
 
 ### 6.1 Schema Overview
 
-The synthetic dataset consists of eight interrelated tables. Tables 1–6 are shared infrastructure; Tables 7–8 are new in v2.0.
+The synthetic dataset consists of eight interrelated tables. Tables 1–6 are shared infrastructure; Tables 7–8 are new in v2.0. Table 7 (`cps_ifs_records`) unifies CPS and IFS persistence and stores the embedding vectors used for Phase 3 retraining.
 
 #### Table 1: `workload_intent`
 
@@ -1365,15 +1367,23 @@ The synthetic dataset consists of eight interrelated tables. Tables 1–6 are sh
 |---|---|---|
 | `intent_id` | UUID | Primary key |
 | `workload_name` | string | Human-readable name |
-| `description` | text | Free-text workload purpose |
+| `description` | text | Free-text workload purpose (raw_intent fed to IntentInferenceEngine) |
 | `team` | string | Owning team |
-| `workload_type` | enum | `etl`, `adhoc`, `ml_training`, `llm_pipeline`, `batch`, `streaming`, `serving` |
+| `workload_type` | enum | `etl`, `adhoc`, `ml_training`, `llm_pipeline`, `batch`, `streaming`, `serving` — user-declared or filled from inference |
 | `environment` | enum | `sandbox`, `dev`, `test`, `staging`, `prod` |
 | `priority` | enum | `low`, `medium`, `high`, `critical` |
 | `expected_duration_hours` | float | Expected runtime |
 | `frequency` | enum | `hourly`, `daily`, `weekly`, `on_demand` |
 | `token_budget` | int? | Required for `llm_pipeline` |
 | `submitted_at` | timestamp | Submission time |
+| `workload_type_inferred` | enum? | NLP-inferred workload type (null if inference not run or low confidence) |
+| `data_volume_estimate` | enum? | `small`, `medium`, `large`, `xl` — inferred from description |
+| `latency_sensitivity` | enum? | `batch_ok`, `interactive`, `real_time` — inferred from description |
+| `recurrence_signal` | enum? | `one_time`, `recurring`, `unknown` — inferred from description |
+| `pii_signal` | bool | True if PII/customer keywords detected in description |
+| `type_mismatch` | bool | True if `workload_type` ≠ `workload_type_inferred` with confidence ≥ 0.85 |
+| `type_mismatch_confidence` | float? | Classifier confidence on `workload_type_inferred` when mismatch = True |
+| `inference_confidence` | float? | Overall NLP inference confidence (0.0–1.0) |
 
 #### Table 2: `provisioned_config`
 
@@ -1440,19 +1450,26 @@ The synthetic dataset consists of eight interrelated tables. Tables 1–6 are sh
 | `cache_hit_rate` | float | |
 | `estimated_cost_usd` | float | |
 
-#### Table 7: `cps_records` *(new in v2.0)*
+#### Table 7: `cps_ifs_records` *(new in v2.0, replaces `cps_records`)*
+
+Unified persistence for both CPS (economic impact) and IFS (behavioral alignment) per workload run. IFS fields are null for `pre_provision` records (behavior not yet observed); populated after execution completes.
 
 | Column | Type | Description |
 |---|---|---|
 | `record_id` | UUID | Primary key |
 | `intent_id` | UUID | FK → workload_intent |
-| `run_id` | UUID? | FK → runtime_metrics |
+| `run_id` | UUID? | FK → runtime_metrics (null for pre_provision stage) |
 | `stage` | enum | `pre_provision`, `runtime`, `ai_workload` |
-| `potential_cost_usd` | float | |
-| `actual_cost_usd` | float | |
-| `prevented_cost_usd` | float | |
+| `potential_cost_usd` | float | Cost without system |
+| `actual_cost_usd` | float | Cost with system |
+| `prevented_cost_usd` | float | Derived: potential − actual |
 | `cps` | float | prevented / potential |
 | `source_action` | string | e.g., `AUTO_CORRECT`, `terminate`, `token_budget` |
+| `ifs` | float? | cosine_sim(f(intent), g(behavior)) in R^32; null for pre_provision |
+| `ifs_category` | enum? | `well_aligned`, `minor`, `significant`, `severe`; null for pre_provision |
+| `intent_embedding` | float[32]? | f(intent_features) vector; stored for Phase 3 retraining |
+| `behavior_embedding` | float[32]? | g(behavior_features) vector; stored for Phase 3 retraining |
+| `generation` | int | Phase 3 generation index (increments each batch cycle) |
 | `recorded_at` | timestamp | |
 
 #### Table 8: `policy_registry` *(new in v2.0)*
@@ -1543,23 +1560,27 @@ The workload distributions (over-provisioning rates, utilization variance by job
 
 ---
 
-### Experiment 3 — Anomaly Detection with ML Attribution
+### Experiment 3 — IBD Detection with ML Attribution
 
-**Goal:** Show that intent-behavior mismatch detection with ML attribution outperforms threshold-based detection.
+**Goal:** Show that IFS-based intent-behavior divergence detection with joint contrastive embedding and ML attribution outperforms threshold-based detection.
 
 **Owner:** Sreeja Katta
 
-| | Threshold Detector | PBCP Semantic Detector |
+| | Threshold Detector | PBCP IBD Detector |
 |---|---|---|
-| Signal | CPU < 30% OR idle > 20 min | Cosine distance (intent vs. behavior) > θ |
+| Signal | CPU < 30% OR idle > 20 min | IFS < θ_ifs (joint contrastive embedding: `f(intent)` + `g(behavior)` → R^32) |
+| Similarity computation | N/A — threshold only | cosine_similarity(f(intent_features), g(behavior_features)) in shared embedding space |
 | Untagged resource handling | Ignored | ML attribution label + confidence |
 | Attribution-aware detection | No | Yes |
+| type_mismatch signal | Not available | Flagged pre-execution; mismatch workloads expected to have lower IFS |
 
 **Metrics:**
 - Precision, Recall, F1 on injected anomaly set
 - Mean Time to Detection (MTTD, minutes)
 - Attribution accuracy on untagged subset (target ≥ 90%)
 - False positive rate
+- IFS distribution: mean IFS for flagged vs. non-flagged workloads
+- `type_mismatch=True` subgroup: over-provisioning rate vs. `type_mismatch=False` (tests the NLP inference hypothesis from Section 5.1.1)
 
 ---
 
