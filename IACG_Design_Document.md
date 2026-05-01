@@ -909,8 +909,7 @@ For evaluation against synthetic data, the runtime optimizer runs as an event-dr
 
 ### 5.6 Cost Prevention Score (CPS) + Intent Fidelity Score (IFS) — Dual-Metric Reporting
 
-**Owner:** Keerthi Rapolu
-**Location:** `/cps_metrics/`
+**Owner:** CPS — Keerthi Rapolu (`/cps_metrics/`); IFS computation — Sreeja Katta (`/ifs/`); dual-metric aggregation — joint
 
 #### CPS Definition
 
@@ -1778,10 +1777,14 @@ iacg/
 │   ├── normalizer.py                # CrossCloudNormalizer; UnifiedCostRecord
 │   └── __init__.py
 │
-├── cps_metrics/                     # Keerthi — CPS + IFS dual-metric tracking
+├── cps_metrics/                     # Keerthi — CPS tracking and aggregate reporting
 │   ├── cps_calculator.py            # CPSCalculator; per-record CPS computation
-│   ├── ifs_calculator.py            # IFSCalculator; cosine similarity (intent vs behavior)
-│   ├── prevention_tracker.py        # PreventionTracker; aggregate roll-up + convergence curve
+│   ├── prevention_tracker.py        # PreventionTracker; aggregate CPS + IFS roll-up; convergence curve
+│   └── __init__.py
+│
+├── ifs/                             # Sreeja — IFS metric: joint embedding + computation
+│   ├── joint_embedding.py           # f(intent) + g(behavior) contrastive encoders (InfoNCE); R^32 shared space
+│   ├── ifs_calculator.py            # IFSCalculator; cosine_sim(f, g); IFSRecord production
 │   └── __init__.py
 │
 ├── ml_attribution/                  # Sreeja — ML-based resource tagging
@@ -1789,8 +1792,7 @@ iacg/
 │   ├── resource_classifier.py       # ResourceAttributionClassifier (RandomForest)
 │   └── __init__.py
 │
-├── anomaly_rca/                     # Sreeja — IBD detection + RCA
-│   ├── joint_embedding.py           # f(intent) + g(behavior) contrastive encoders; IFS computation
+├── anomaly_rca/                     # Sreeja — IBD detection + RCA (consumes ifs/)
 │   ├── anomaly_detector.py          # IBD detection; IFS thresholding + AnomalyRecord
 │   ├── rag_rca.py                   # RAG-based root cause analysis
 │   ├── prevention_feedback.py       # AnomalyPreventionFeedback → PolicySuggestion
@@ -1824,52 +1826,57 @@ iacg/
 
 ## 9. Authorship & Contribution Map
 
+The authorship split follows a coherent system boundary: **Keerthi owns the prevention system** (Phases 1 and 2 — intent capture, simulation, policy enforcement, runtime correction); **Sreeja owns the measurement and intelligence system** (IFS, detection, attribution, AI governance, Phase 3 data inputs). Both halves are essential: the prevention system needs the measurement system's IFS scores to evaluate its own effectiveness, and the measurement system needs the prevention system's WorkloadIntent and cost records to compute them.
+
 ### Keerthi Rapolu — First Author
 
-**Core Framework & Prevention Systems**
+**Prevention Systems (Phases 1 & 2)**
 
-| Module | Ownership | Description |
-|---|---|---|
-| `intent_model/` | Full | Workload intent parsing, ResourceConfig, IntentCatalog |
-| `simulation_engine/` | Full | Pre-execution simulation; BLOCK/AUTO_CORRECT/SUGGEST engine |
-| `policy_engine/` | Full | Policy schema, PolicyRegistry, PolicyLearner, PolicyEnforcer |
-| `guardrails/` | Full | Pre-provisioning decision gate integrating policy + simulation |
-| `runtime_optimizer/` | Full | Autonomous runtime correction; downscale/terminate/migrate |
-| `cost_normalizer/` | Full | Cross-cloud UCR; pricing normalization across AWS/Azure/GCP |
-| `cps_metrics/` | Full | CPS definition, CPSRecord schema, PreventionTracker roll-up |
-| System architecture | Primary | Overall PBCP framework design and component interfaces |
-| Experiments 1 & 2 | Primary | Pre-provision prevention + runtime prevention scenarios |
-| Experiment 5 | Joint | System-level CPS aggregate |
+| Module | Ownership | Files | Description |
+|---|---|---|---|
+| `intent_model/` | Full | 4 | NLP intent inference; WorkloadIntent; KNN workload embedding replacing catalog priors |
+| `simulation_engine/` | Full | 4 | Pre-execution simulation; EV-based decision-theoretic intervention; CostOfCorrectionModel |
+| `policy_engine/` | Full | 3 | Learned policy registry; PolicyLearner; Phase 3 closed-loop update; convergence analysis |
+| `guardrails/` | Full | 2 | Pre-provisioning gate; PolicyConflictResolver with auto-negotiate |
+| `runtime_optimizer/` | Full | 2 | Autonomous runtime correction; downscale/terminate/migrate |
+| `cost_normalizer/` | Full | 1 | Cross-cloud UCR normalization across AWS/Azure/GCP |
+| `cps_metrics/` | Full | 2 | CPS metric definition; CPSIFSRecord schema; PreventionTracker (consumes IFSRecords from Sreeja) |
+| System architecture | Primary | — | Overall PBCP framework design and component interfaces |
+| Experiments 1, 2, 6 | Primary | — | Pre-provision prevention; runtime prevention; Phase 3 convergence study |
+| Experiment 5 | Joint | — | System-level CPS + IFS dual-metric roll-up |
 
 **Key Research Contributions:**
-- Definition and formalization of the Cost Prevention Score (CPS) metric
-- **Intent Fidelity Score (IFS):** novel measurable quantity for intent-behavior alignment; joint contrastive embedding (`f(intent)` + `g(behavior)` → shared R^32) solves the heterogeneous-space problem; IFS as primary governance signal with cost waste as derived consequence
-- Pre-execution simulation methodology with workload-specific utilization priors (embedding-based KNN, replaces static catalog)
-- **NLP intent inference engine:** extracts workload semantics (type, data volume, latency sensitivity, PII signal, recurrence) from natural language; the `type_mismatch` flag is a novel predictor of over-provisioning, directly testable in experiments
-- Intent → learned policy framework with enforcement semantics
-- **Policy Conflict Resolution layer:** `PolicyConflictResolver` with four resolution strategies (highest-priority-wins, most-restrictive, auto-negotiate, human-escalate); addresses the governance gaming problem that hard REJECT creates
-- **Cost-of-Correction model:** decision-theoretic intervention engine (EV formula); no existing governance system models intervention cost
-- **Phase 3 closed-loop learning:** formal convergence criterion (population-level IFS improvement); quantified learning curve showing how many workloads until learned policies outperform built-in
+- **CPS metric:** definition, formalization, ESR constraint, Valid CPS = CPS × ESR; single comparable prevention measure across stages and providers
+- **NLP intent inference engine:** extracts workload semantics from natural language (type, data volume, latency sensitivity, PII signal, recurrence); `type_mismatch` flag as a novel, testable predictor of over-provisioning
+- **KNN workload embedding:** replaces static catalog priors with FAISS-based nearest-neighbor retrieval; workload-specific utilization predictions rather than class-generic averages
+- **Cost-of-Correction model:** EV-based decision-theoretic intervention engine; no existing governance system models the cost of the intervention itself
+- **Policy Conflict Resolution:** `PolicyConflictResolver` with four strategies (highest-priority-wins, most-restrictive, auto-negotiate, human-escalate); prevents governance gaming via hard REJECT
+- **Phase 3 convergence criterion:** formal definition of loop convergence as monotone increase in population-level IFS; Experiment 6 quantifies sample efficiency
 
 ---
 
 ### Sreeja Katta — Second Author
 
-**Intelligence, Detection & AI Governance**
+**Measurement & Intelligence Systems**
 
-| Module | Ownership | Description |
-|---|---|---|
-| `ml_attribution/` | Full | RandomForest-based resource tagging; untagged attribution |
-| `anomaly_rca/` | Full | Intent-behavior mismatch detection; RAG-based RCA; prevention feedback loop |
-| `ai_governance/` | Full | Token budget enforcement; LLM-specific policy engine |
-| Experiments 3 & 4 | Primary | Anomaly detection + AI workload governance scenarios |
-| Experiment 5 | Joint | System-level CPS aggregate |
+| Module | Ownership | Files | Description |
+|---|---|---|---|
+| `ifs/` | Full | 2 | **Primary contribution:** joint contrastive embedding (`f(intent)` + `g(behavior)` → R^32, InfoNCE); IFS computation; IFSRecord production |
+| `anomaly_rca/` | Full | 3 | IBD detection using IFS; RAG-based RCA with structured cause categories; anomaly→policy feedback loop |
+| `ml_attribution/` | Full | 2 | RandomForest-based resource tagging; untagged resource attribution |
+| `ai_governance/` | Full | 2 | Token budget enforcement; LLM-specific policy engine; embedding efficiency governance |
+| Experiments 3, 4 | Primary | — | IBD/IFS detection + type_mismatch subgroup; AI workload governance |
+| Experiment 5 | Joint | — | System-level CPS + IFS dual-metric roll-up |
 
 **Key Research Contributions:**
-- ML attribution pipeline for untagged resource governance
-- Anomaly-to-prevention feedback loop (anomaly detection informs policy updates)
-- RAG-based root cause analysis with structured incident retrieval
-- AI workload cost modeling (token waste, embedding efficiency)
+- **IFS metric implementation:** joint contrastive embedding solves the heterogeneous-space problem — intent features (workload metadata) and behavior features (runtime metrics) are projected into a shared R^32 space via InfoNCE loss before similarity is computed; raw cosine distance across the two spaces would be dimensionally incoherent
+- **IBD detection framework:** IFS as the primary anomaly signal (replaces CPU thresholds); detects misalignment that dollar-threshold detectors miss (e.g., ETL job finishing 10× faster than declared)
+- **Anomaly-to-prevention feedback loop:** low-IFS records generate PolicySuggestions that update the Phase 3 policy registry; closes the measurement→prevention loop
+- **RAG-based root cause analysis:** retrieval-augmented explanation for low-IFS workloads with structured cause categories
+- **ML attribution pipeline:** enables governance of untagged resources; improves IFS precision on resources without metadata
+- **AI workload governance:** token budget enforcement and embedding efficiency policies for LLM/RAG workloads
+
+*Note on IFS concept vs. implementation:* The IFS framing (intent-behavior divergence as the primary failure mode, cost waste as derived consequence) is a joint conceptual contribution; Sreeja owns the implementation (`ifs/` module) and experimental evaluation (Experiment 3). Keerthi's Phase 3 convergence criterion uses IFS as its optimization target, consuming IFSRecords produced by Sreeja's module.
 
 ---
 
@@ -1880,21 +1887,22 @@ iacg/
 | `/data/` | Dataset generation, schema design, seed management |
 | `/evaluation/` | Metrics framework, benchmark orchestration |
 | `/experiments/baselines/` | All baseline implementations |
-| Experiment 5 | System-level CPS roll-up |
+| Experiment 5 | System-level CPS + IFS dual-metric roll-up |
 | `/docs/` | Documentation, architecture diagrams |
 
 ---
 
 ### Interface Contract Between Authors
 
-The following interfaces define the boundary between Keerthi's prevention modules and Sreeja's intelligence modules. Neither author duplicates logic across this boundary.
+The following interfaces define the boundary between Keerthi's prevention modules and Sreeja's measurement/intelligence modules. Neither author duplicates logic across this boundary.
 
 | Interface | From | To | Contract |
 |---|---|---|---|
-| `WorkloadIntent` | `intent_model/` (K) | `ml_attribution/`, `anomaly_rca/`, `ai_governance/` (S) | Read-only input |
-| `CPSRecord` | `cps_metrics/` (K) | `anomaly_rca/prevention_feedback.py` (S) | S reads; K writes |
+| `WorkloadIntent` | `intent_model/` (K) | `ifs/`, `ml_attribution/`, `anomaly_rca/`, `ai_governance/` (S) | Read-only input; S never mutates |
+| `IFSRecord` | `ifs/ifs_calculator.py` (S) | `cps_metrics/prevention_tracker.py` (K) | S writes; K consumes for dual-metric roll-up and convergence curve |
+| `CPSIFSRecord` | `cps_metrics/` (K) | `anomaly_rca/prevention_feedback.py` (S) | S reads CPS context; K writes |
 | `PolicySuggestion` | `anomaly_rca/prevention_feedback.py` (S) | `policy_engine/policy_registry.py` (K) | S writes; K consumes |
-| `AttributionResult` | `ml_attribution/` (S) | `guardrails/` (K) | K reads; S writes |
+| `AttributionResult` | `ml_attribution/` (S) | `guardrails/` (K) | K reads for policy enforcement on untagged resources; S writes |
 | `UnifiedCostRecord` | `cost_normalizer/` (K) | `anomaly_rca/`, `ai_governance/` (S) | S reads; K writes |
 
 ---
