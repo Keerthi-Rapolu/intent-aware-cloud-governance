@@ -117,10 +117,10 @@ Consider: a cluster is provisioned for a "customer churn model retraining job" �
 This reframing yields a new measurable quantity: the **Intent Fidelity Score (IFS)**:
 
 ```
-IFS(w) = sim(intent_vector(w), behavior_vector(w))    ∈ [0, 1]
+IFS(w) = cosine_similarity(f(intent_features(w)), g(behavior_features(w)))    ∈ [0, 1]
 ```
 
-Where `sim` is cosine similarity, `intent_vector` encodes the pre-execution declared properties of the workload (workload type, resource configuration, expected duration, team history), and `behavior_vector` encodes the post-execution observed metrics (actual CPU, memory, duration, idle ratio). A perfectly well-matched workload has IFS = 1.0; a severely misaligned workload approaches 0.
+Where `f` and `g` are jointly trained encoder networks that project workload metadata (intent) and runtime metrics (behavior) into a **shared embedding space** before similarity is computed. Computing raw cosine distance between a metadata vector and a metrics vector — without this joint projection — would be dimensionally incoherent; the learned encoders make the comparison principled by ensuring both representations inhabit a common space where distance reflects actual alignment. A perfectly well-matched workload has IFS = 1.0; a severely misaligned workload approaches 0. Full training details are in Section 5.9.
 
 **Cost waste is a consequence of low IFS, not its own primary signal.** This reframing has three practical implications:
 
@@ -189,13 +189,14 @@ Where `sim` is cosine similarity, `intent_vector` encodes the pre-execution decl
  │  STAGE 2 ─ PRE-EXECUTION SIMULATION (CRITICAL)                               │
  │  ┌─────────────────────────────────────────────────────────────────────────┐ │
  │  │  simulation_engine/                                                     │ │
- │  │  Input: WorkloadIntent + UCR pricing                                   │ │
+ │  │  Input: WorkloadIntent + UCR pricing + WorkloadSpecificPrior (KNN)     │ │
  │  │  Output: predicted_cost · predicted_utilization · predicted_waste      │ │
  │  │                                                                         │ │
- │  │  waste > 50%  →  BLOCK                                                 │ │
- │  │  waste > 30%  →  AUTO-CORRECT (right-size + resubmit)                 │ │
- │  │  waste > 15%  →  SUGGEST (advisory)                                    │ │
- │  │  else         →  APPROVE                                               │ │
+ │  │  CostOfCorrectionModel: EV(BLOCK), EV(AUTO_CORRECT) per workload       │ │
+ │  │  EV(BLOCK) > EV(AUTO_CORRECT) > 0  →  BLOCK                           │ │
+ │  │  EV(AUTO_CORRECT) > 0              →  AUTO-CORRECT                    │ │
+ │  │  waste_fraction > 0.15             →  SUGGEST (advisory)               │ │
+ │  │  else                              →  APPROVE                          │ │
  │  └─────────────────────────────────────────────────────────────────────────┘ │
  │                                       │                                      │
  │  STAGE 3 ─ POLICY ENFORCEMENT                                                │
@@ -318,7 +319,11 @@ raw_intent: str  (natural language description)
       │
       ▼
 [Regex + keyword patterns]  — fast path for explicit signals
-  ("weekly" → frequency=weekly, "customer" → data_sensitivity=customer_pii, ...)
+  "weekly/daily/hourly" → recurrence_signal
+  "customer/user/PII/HIPAA" → pii_signal = True
+  "realtime/streaming/dashboard" → latency_sensitivity = "real_time"
+  "batch/overnight/nightly" → latency_sensitivity = "batch_ok"
+  "GB/TB/dataset/pipeline" + size tokens → data_volume_estimate
       │
       ▼
 [Fine-tuned classifier (DistilBERT, 6-class)]  — workload_type prediction
@@ -331,17 +336,23 @@ raw_intent: str  (natural language description)
       │
       ▼
 InferredIntentFields:
-  workload_type_inferred:    WorkloadType   (with confidence score)
-  frequency_inferred:        str            # "hourly" | "daily" | "weekly" | "on_demand"
-  data_sensitivity_inferred: str            # "none" | "internal" | "customer_pii" | "regulated"
-  expected_duration_inferred: float         # hours, from team history
-  team_pattern_match:        str            # matched team profile label
-  inference_confidence:      float          # overall confidence (0.0–1.0)
+  workload_type_inferred:    WorkloadType        # inferred, not declared
+  data_volume_estimate:      str                 # "small" | "medium" | "large" | "xl"
+  latency_sensitivity:       str                 # "batch_ok" | "interactive" | "real_time"
+  recurrence_signal:         str                 # "one_time" | "recurring" | "unknown"
+  pii_signal:                bool                # True if customer/user/PII keywords detected
+  expected_duration_inferred: float              # hours, from team history
+  team_pattern_match:        str                 # matched team profile label
+  type_mismatch:             bool                # declared_type ≠ inferred_type (high confidence)
+  type_mismatch_confidence:  float               # confidence of inferred type when mismatch=True
+  inference_confidence:      float               # overall confidence (0.0–1.0)
 ```
 
-**Compliance trigger:** when `data_sensitivity_inferred = "customer_pii"` or `"regulated"`, the guardrail layer automatically enforces stricter policies (no spot, mandatory encryption tags, environment locked to `prod`). This is the key benefit of NLP inference: users submitting in natural language automatically receive compliance enforcement they would otherwise have to opt into.
+**The mismatch signal is a testable research claim.** When `type_mismatch = True` (the declared workload type diverges from what the NLP classifier infers from the description), this is a strong predictor of over-provisioning. The hypothesis is: teams that describe a workload as one type ("quick ETL job") but declare it as another ("ml_training") consistently provision for the declared type, not the actual behavior — resulting in systematic resource waste. This is directly testable in Experiment 1: measure over-provisioning rate on `type_mismatch = True` workloads vs. `type_mismatch = False`, and show that the mismatch flag predicts simulation intervention rate. No existing tool generates this signal.
 
-**Conflict resolution:** if the user explicitly provides a field (e.g., `workload_type = "etl"`) that conflicts with the NLP inference (e.g., classifier predicts `ml_training` with confidence 0.88), the system keeps the user-provided value but logs the discrepancy as a low-severity anomaly flag. Discrepancies above a threshold are surfaced to the user for confirmation.
+**Compliance trigger:** when `pii_signal = True` or `data_sensitivity_inferred = "regulated"`, the guardrail layer automatically enforces stricter policies (no spot, mandatory encryption tags, environment locked to `prod`). Users submitting in natural language automatically receive compliance enforcement they would otherwise have to opt into.
+
+**Conflict resolution:** if `type_mismatch = True` with `type_mismatch_confidence ≥ 0.85`, the system surfaces a confirmation prompt before proceeding rather than silently accepting the declared type. The user can override the inference (their declared type wins) or accept the correction. Either choice is logged; accepted corrections feed back into the classifier's training set.
 
 #### 5.1.2 Core Data Types
 
@@ -367,11 +378,16 @@ class ResourceConfig:
 @dataclass
 class InferredIntentFields:
     workload_type_inferred: Optional[WorkloadType]
-    frequency_inferred: Optional[str]
+    data_volume_estimate: str               # "small" | "medium" | "large" | "xl"
+    latency_sensitivity: str               # "batch_ok" | "interactive" | "real_time"
+    recurrence_signal: str                 # "one_time" | "recurring" | "unknown"
+    pii_signal: bool                       # True if PII/customer keywords detected
     data_sensitivity_inferred: DataSensitivity
     expected_duration_inferred: Optional[float]
     team_pattern_match: Optional[str]
-    inference_confidence: float
+    type_mismatch: bool                    # declared_type ≠ inferred_type
+    type_mismatch_confidence: float        # confidence of inferred type when mismatch=True
+    inference_confidence: float            # overall confidence (0.0–1.0)
 
 @dataclass
 class WorkloadIntent:
@@ -783,6 +799,37 @@ WorkloadIntent submitted
         Approved WorkloadIntent → resource provisioning
 ```
 
+#### Policy Conflict Resolution
+
+The decision flow above assumes policies are independent — one policy fires at a time. In practice, policies conflict. A `priority=critical, environment=prod` ETL job may need 8 hours of runtime, violating `etl_auto_shutdown` (REJECT at 4 hours), while its criticality demands it not be blocked. A naive enforcement engine has no way to resolve this: it either always REJECTs (teams work around it by lying about workload type) or it never REJECTs critical jobs (the policy becomes toothless).
+
+**`PolicyConflictResolver`** detects and resolves these cases before returning a `GuardrailDecision`:
+
+```python
+@dataclass
+class PolicyConflict:
+    conflicting_policies: list[Policy]    # the policies that disagree
+    intent: WorkloadIntent
+    resolution: Literal["highest_priority_wins", "most_restrictive",
+                        "human_escalate", "auto_negotiate"]
+    negotiated_config: Optional[ResourceConfig]  # compromise if auto_negotiate
+
+class PolicyConflictResolver:
+    def detect(violations: list[PolicyViolation], intent: WorkloadIntent) -> list[PolicyConflict]
+    def resolve(conflict: PolicyConflict) -> PolicyConflict  # fills resolution + negotiated_config
+```
+
+**Resolution strategies:**
+
+| Strategy | When Applied | Outcome |
+|---|---|---|
+| `highest_priority_wins` | One policy is `builtin` (REJECT), other is `learned` (SUGGEST) | Built-in policy takes precedence |
+| `most_restrictive` | Two policies both REJECT but with different conditions | Both enforced; workload blocked unless both satisfied |
+| `auto_negotiate` | REJECT conflicts with `priority=critical` or `environment=prod` | Right-size the config to satisfy the policy while preserving job viability (e.g., reduce node count to meet cost policy, extend auto_shutdown to meet duration need) |
+| `human_escalate` | `auto_negotiate` produces no feasible config, or `priority=critical` + `environment=prod` + BLOCK | Suspend the workload; route to manual review with full context |
+
+**Why this matters for adoption.** The practical objection to hard enforcement is not that it's wrong in principle — it's that teams will game it. If a `priority=critical` job is always blocked for exceeding auto_shutdown, teams will set `priority=medium` by default. The conflict resolver prevents this by distinguishing "you over-provisioned a low-stakes dev job" (REJECT immediately) from "you need 10 hours for a critical production pipeline" (auto-negotiate a compliant config rather than hard-blocking). The result is a system that teams trust rather than route around.
+
 #### Guardrail Output Per Decision
 
 ```python
@@ -792,6 +839,7 @@ class GuardrailDecision:
     approved: bool
     final_resources: ResourceConfig    # may differ from requested if corrected
     policy_violations: list[PolicyViolation]
+    policy_conflicts: list[PolicyConflict]    # conflicts detected + resolutions applied
     simulation_result: SimulationResult
     total_prevented_cost: float        # sum of policy + simulation prevention
     explanation: str
@@ -877,14 +925,15 @@ A CPS of 0.35 means the system prevented 35% of what would have been billed with
 #### IFS Definition
 
 ```
-IFS(w) = cosine_similarity(intent_vector(w), behavior_vector(w))    ∈ [0, 1]
+IFS(w) = cosine_similarity(f(intent_features(w)), g(behavior_features(w)))    ∈ [0, 1]
 ```
 
-Where:
-- `intent_vector(w)` is computed from the pre-execution `WorkloadIntent`: encodes workload_type, resource configuration (node count, instance size), declared duration, priority, and team history profile
-- `behavior_vector(w)` is computed from the post-execution `RuntimeMetrics`: encodes actual CPU utilization, memory utilization, actual duration, idle_time_ratio, cost delta percentage, and actual_vs_expected_duration ratio
+Where `f` and `g` are encoder functions trained contrastively (see Section 5.9) to project intent features and behavior features into a **shared R^32 space** before similarity is computed. This is critical: intent features (workload metadata) and behavior features (runtime metrics) live in incompatible raw spaces — computing cosine distance on the raw vectors would be dimensionally meaningless. The joint embedding ensures both projections are comparable representations of the same underlying concept: workload alignment.
 
-Both vectors are L2-normalized before computing cosine similarity. An IFS of 1.0 indicates perfect intent-behavior alignment; an IFS near 0.0 indicates the workload's observed behavior is orthogonal to what was declared.
+- `f(intent_features(w))` encodes the pre-execution `WorkloadIntent`: workload_type, node count, duration, data_volume_estimate, priority, environment
+- `g(behavior_features(w))` encodes the post-execution `RuntimeMetrics`: actual CPU utilization, memory utilization, actual duration ratio, idle_time_ratio, cost delta percentage
+
+An IFS of 1.0 indicates perfect intent-behavior alignment; an IFS near 0.0 indicates the workload's observed behavior is orthogonal to what was declared — in a learned space that understands what "aligned" looks like for each workload type.
 
 **IFS interpretation guide:**
 
@@ -1119,25 +1168,56 @@ Measure intent-behavior divergence for every completed workload using the Intent
 
 #### IBD Detection Model
 
-IFS is computed for every completed workload (not just detected anomalies). A workload is flagged as exhibiting IBD when IFS falls below a configurable threshold:
+IFS is computed for every completed workload (not just detected anomalies). A workload is flagged as exhibiting IBD when IFS falls below a configurable threshold.
+
+**The heterogeneous-space problem.** A naive implementation would compute raw cosine similarity between an intent vector (workload metadata: type, node count, duration, priority) and a behavior vector (runtime metrics: CPU, memory, idle ratio). This compares apples to oranges: the two vectors live in incompatible feature spaces and their raw cosine distance has no principled interpretation. A workload with `node_count=20, duration_hours=8` (intent) and `cpu_util=0.85, idle_ratio=0.02` (behavior) are not geometrically comparable; any similarity score derived from raw cosine distance is an artifact of normalization choices, not a true alignment measure.
+
+**Fix: Joint Contrastive Embedding.** PBCP solves this by learning separate encoder functions `f` and `g` that project both spaces into a common R^d representation before computing similarity:
 
 ```
-Intent Vector (pre-execution, from WorkloadIntent)
-        +
-Behavior Vector (post-execution, from RuntimeMetrics)
-        │
-        ▼
-IFS(w) = cosine_similarity(intent_vector, behavior_vector)    ∈ [0, 1]
-        │
-  IFS < θ_ifs (default: 0.65)  →  AnomalyRecord (IBD flagged)
-  IFS ≥ θ_ifs                   →  CPSIFSRecord (normal; IFS logged, no alert)
+Intent features (pre-execution):                Behavior features (post-execution):
+  workload_type (encoded)                          cpu_util_avg
+  node_count (normalized)                          memory_util_avg
+  vcpu_per_node (normalized)                       actual_duration_ratio
+  duration_hours (normalized)                      idle_time_ratio
+  data_volume_estimate (encoded)                   cost_delta_pct
+  priority (encoded)                               spot_interruption_flag
+  environment (encoded)
+        │                                                │
+        ▼                                                ▼
+  f(intent_features)                             g(behavior_features)
+  ─────────────────                              ───────────────────
+  2-layer MLP                                    2-layer MLP
+  → shared R^32 space                            → shared R^32 space
+        │                                                │
+        └──────────────────┬──────────────────────────────┘
+                           ▼
+              IFS(w) = cosine_similarity(f(intent), g(behavior))    ∈ [0, 1]
+                           │
+          IFS < θ_ifs  →  AnomalyRecord (IBD flagged)
+          IFS ≥ θ_ifs  →  CPSIFSRecord (normal; IFS logged, no alert)
 ```
 
-**Behavior vector** encodes (identical feature set to Section 5.6):
-```python
-f(cpu_util_avg, memory_util_avg, runtime_minutes, idle_time_ratio,
-  cost_delta_pct, actual_vs_expected_duration_ratio)
+**Training the joint embedding (contrastive setup):**
+
 ```
+Training pairs from historical dataset:
+  Positive pair: (intent_i, behavior_i) for the SAME workload — f and g should be close
+  Negative pair: (intent_i, behavior_j) for DIFFERENT workloads — f and g should be far
+
+Loss: InfoNCE contrastive loss
+  L = -log [ exp(sim(f_i, g_i) / τ) / Σ_j exp(sim(f_i, g_j) / τ) ]
+  where τ is a temperature parameter (default: 0.07)
+
+Labels:
+  Positive: same workload run → IFS should be high
+  Hard negative: same workload_type, different run outcome → most informative negative
+  Easy negative: different workload_type → less informative
+```
+
+**Why contrastive works here:** the model learns what "aligned" looks like from data — not from hand-crafted rules about what CPU levels mean for ETL vs. ML workloads. An ETL job that always runs at 80% CPU for 3 hours will have a high-IFS embedding naturally; an ETL job declared for 8 hours that exits in 45 minutes will have a low-IFS embedding because the model has seen the signature of that mismatch in training.
+
+**Training data:** 500 historical workloads × 30–90 runs each = 15,000–45,000 intent-behavior pairs. For positive pairs, all runs from the same workload share the same intent vector. For negative pairs, sample randomly across workloads with workload_type-stratified sampling. Model retrained monthly in Phase 3 as new pairs accumulate.
 
 **Why IFS is richer than CPU thresholds:**
 
@@ -1664,6 +1744,7 @@ iacg/
 │
 ├── guardrails/                      # Keerthi — unified pre-provision decision gate
 │   ├── pre_provision_guard.py       # GuardrailDecision; integrates policy + simulation
+│   ├── conflict_resolver.py         # PolicyConflict; PolicyConflictResolver + resolution strategies
 │   └── __init__.py
 │
 ├── runtime_optimizer/               # Keerthi — autonomous runtime correction
@@ -1686,8 +1767,9 @@ iacg/
 │   ├── resource_classifier.py       # ResourceAttributionClassifier (RandomForest)
 │   └── __init__.py
 │
-├── anomaly_rca/                     # Sreeja — anomaly detection + RCA
-│   ├── anomaly_detector.py          # Intent vs. behavior mismatch detection
+├── anomaly_rca/                     # Sreeja — IBD detection + RCA
+│   ├── joint_embedding.py           # f(intent) + g(behavior) contrastive encoders; IFS computation
+│   ├── anomaly_detector.py          # IBD detection; IFS thresholding + AnomalyRecord
 │   ├── rag_rca.py                   # RAG-based root cause analysis
 │   ├── prevention_feedback.py       # AnomalyPreventionFeedback → PolicySuggestion
 │   └── __init__.py
@@ -1739,10 +1821,11 @@ iacg/
 
 **Key Research Contributions:**
 - Definition and formalization of the Cost Prevention Score (CPS) metric
-- **Intent Fidelity Score (IFS):** novel measurable quantity for intent-behavior alignment; IFS as primary governance signal with cost waste as derived consequence
+- **Intent Fidelity Score (IFS):** novel measurable quantity for intent-behavior alignment; joint contrastive embedding (`f(intent)` + `g(behavior)` → shared R^32) solves the heterogeneous-space problem; IFS as primary governance signal with cost waste as derived consequence
 - Pre-execution simulation methodology with workload-specific utilization priors (embedding-based KNN, replaces static catalog)
-- **NLP intent inference engine:** extracts workload semantics (type, frequency, data sensitivity, duration) from natural language descriptions; first tool to flip the over-specify-compute / under-specify-intent pattern
+- **NLP intent inference engine:** extracts workload semantics (type, data volume, latency sensitivity, PII signal, recurrence) from natural language; the `type_mismatch` flag is a novel predictor of over-provisioning, directly testable in experiments
 - Intent → learned policy framework with enforcement semantics
+- **Policy Conflict Resolution layer:** `PolicyConflictResolver` with four resolution strategies (highest-priority-wins, most-restrictive, auto-negotiate, human-escalate); addresses the governance gaming problem that hard REJECT creates
 - **Cost-of-Correction model:** decision-theoretic intervention engine (EV formula); no existing governance system models intervention cost
 - **Phase 3 closed-loop learning:** formal convergence criterion (population-level IFS improvement); quantified learning curve showing how many workloads until learned policies outperform built-in
 
@@ -1835,10 +1918,12 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 | Prior Design | This Design | Why It Differentiates |
 |---|---|---|
-| Intent = form-fill metadata | Intent = NLP-inferred semantics | No existing governance tool extracts intent from natural language |
-| Catalog priors for utilization | Workload embedding space + KNN retrieval | Workload-specific priors, not class-generic averages |
+| Intent = form-fill metadata | Intent = NLP-inferred semantics; `type_mismatch` flag predicts over-provisioning | No existing governance tool extracts intent from natural language or measures declared-vs-inferred divergence |
+| Catalog priors for utilization | Workload embedding space + KNN retrieval | Workload-specific priors, not class-generic averages; 500 GB ETL ≠ 5 GB ETL |
 | Cost waste as primary signal | Intent-Behavior Divergence (IFS) as primary signal | Novel measurable quantity; cost waste is a derived consequence |
+| Raw cosine between metadata and metrics vectors | Joint contrastive embedding (f + g → shared R^32) | Principled similarity; raw cosine across heterogeneous spaces is dimensionally incoherent |
 | AUTO-CORRECT treated as free | Intervention has a cost model (EV formula) | Decision-theoretic, not heuristic; addresses "blocks too aggressively" objection |
+| Independent policy rules; hard REJECT | Policy Conflict Resolution (4 strategies incl. auto-negotiate) | Handles critical/prod edge cases; prevents governance gaming via type-lying |
 | Closed loop mentioned | Closed loop formalized with convergence analysis | Makes Phase 3 a falsifiable research claim, not an implementation detail |
 | CPS metric only | CPS + IFS dual-metric reporting | Richer evaluation story; IFS measures what CPS alone cannot |
 
