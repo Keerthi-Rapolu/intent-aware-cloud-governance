@@ -1469,7 +1469,7 @@ Unified persistence for both CPS (economic impact) and IFS (behavioral alignment
 | `ifs_category` | enum? | `well_aligned`, `minor`, `significant`, `severe`; null for pre_provision |
 | `intent_embedding` | float[32]? | f(intent_features) vector; stored for Phase 3 retraining |
 | `behavior_embedding` | float[32]? | g(behavior_features) vector; stored for Phase 3 retraining |
-| `generation` | int | Phase 3 generation index (increments each batch cycle) |
+| `generation` | int | Phase 3 generation index; increments after each batch cycle (1 generation = 50 workloads in evaluation; configurable in deployment — see Section 5.3 Convergence Analysis) |
 | `recorded_at` | timestamp | |
 
 #### Table 8: `policy_registry` *(new in v2.0)*
@@ -1494,6 +1494,7 @@ Unified persistence for both CPS (economic impact) and IFS (behavioral alignment
 - **Over-provisioning injection:** 35% of ETL workloads provisioned with 2–3× optimal nodes
 - **Idle cluster injection:** 25% of adhoc workloads have idle time > auto_shutdown threshold
 - **LLM token waste injection:** 30% of llm_pipeline workloads have token_budget = None or usage > budget
+- **Type mismatch injection:** 15% of workloads have `type_mismatch=True`, achieved by assigning a description semantically inconsistent with the declared type (e.g., description = "quick interactive analytics query" with `workload_type = ml_training`); the NLP classifier is expected to infer the correct type from the description, making these the primary test cases for the mismatch-predicts-over-provisioning hypothesis in Experiment 3
 - **Random seed:** fixed (42) for reproducibility
 - **Generation script:** `/data/generate_dataset.py`
 
