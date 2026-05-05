@@ -38,17 +38,19 @@
 
 ## 1. Executive Summary
 
-Modern cloud cost governance has a fundamental architecture flaw: it is built entirely around detection and response, not prevention. Billing systems fire after waste has accumulated. Anomaly detectors trigger after hours of inefficient resource consumption. Governance dashboards surface insights with no enforcement path. The result is a structural lag between cloud activity and cost accountability that compounds at scale.
+At 8:00 AM, a data engineering team launches a 20-node ETL cluster on AWS to process a customer churn dataset. By 11:00 AM the job finishes. The cluster sits idle. By 6:00 PM — ten billing hours after launch — an automated alert fires. On `m5.xlarge` in us-east-1, that eight-hour idle window costs $307. Across 50 such workloads per week at an enterprise, this single failure mode alone represents over **$800K in annual waste that no billing report could recover**. The charge was incurred the moment the job completed and no one shut it down. Every governance system in production today would have caught it *after*. None could have stopped it *before*.
 
-The **Pre-Billing Cost Prevention Framework (PBCP)** — evolved from the Intent-Aware Cloud Governance (IACG) research line — eliminates this lag by repositioning every governance action to occur *before* billing is incurred. The system is organized into three explicit phases:
+This is not a monitoring problem. It is an architecture problem. Cloud cost governance is built entirely around detection and response — billing systems fire after waste has accumulated, anomaly detectors trigger after hours of inefficient consumption, dashboards surface insight with no enforcement path. The result is a structural lag between cloud activity and cost accountability that compounds at scale.
+
+**The primary research contribution of this paper is a novel measurement framework for cloud waste prevention:** the **Cost Prevention Score (CPS)**, formally defined as `Prevented_Cost / Potential_Cost_Without_System`, paired with a mandatory **Execution Success Rate (ESR)** constraint that makes CPS gaming-resistant. Valid CPS = CPS × ESR ensures that prevention value is counted only when workloads actually complete — a system that blocks aggressively achieves low ESR and therefore low Valid CPS regardless of raw savings claimed. No existing cloud governance system defines a comparable, gaming-resistant metric for *prevented* cost. CPS and ESR together provide the first principled evaluation standard for pre-billing governance.
+
+The **Pre-Billing Cost Prevention Framework (PBCP)** — evolved from the Intent-Aware Cloud Governance (IACG) research line — is the system built to demonstrate this metric at scale. It eliminates the billing lag by repositioning every governance action to occur *before* billing is incurred, organized into three explicit phases:
 
 - **Phase 1 — Simulate & Prevent** (pre-execution): infer workload intent from natural language, match against a workload embedding space for workload-specific utilization priors, simulate predicted cost and waste, and apply decision-theoretic intervention (weighing prevention value against correction cost) before any resource is created.
 - **Phase 2 — Monitor & Correct** (runtime): continuously monitor active workloads and autonomously apply corrections (downscale, terminate, spot-migrate) while logging every dollar of prevented cost.
 - **Phase 3 — Learn & Adapt** (post-execution): feed observed intent-behavior divergence back into the policy registry and embedding model; formalize this as a closed learning loop with a measurable convergence property.
 
-The fundamental failure mode that PBCP targets is **intent-behavior divergence**: the gap between what a workload was provisioned to do and what it actually does at runtime. Cost waste is a *consequence* of this divergence, not the primary signal. To capture this directly, PBCP introduces a novel **Intent Fidelity Score (IFS)** — defined as the similarity between a workload's declared intent vector and its observed runtime behavior vector — which serves as the primary anomaly and governance signal. A workload with low IFS is exhibiting behavior its provisioning was never designed to support; cost waste follows from that.
-
-Two complementary metrics drive evaluation: **CPS** (`Prevented_Cost / Potential_Cost_Without_System`) quantifies economic impact; **IFS** quantifies behavioral alignment. Together they form the dual-metric reporting standard for all experiments.
+The secondary original contribution is the **Intent Fidelity Score (IFS)**: a formal measure of the gap between what a workload was provisioned to do and what it actually does at runtime. Cost waste is a *consequence* of intent-behavior divergence, not the primary signal. IFS captures the root cause — and enables anomaly detection that fires before the first billing event, not after. Both metrics (CPS + IFS) form the dual-metric reporting standard for all experiments and the convergence criterion for Phase 3.
 
 This document describes the full system design, data model, experimental plan, and authorship breakdown for the PBCP research implementation.
 
@@ -78,11 +80,42 @@ Even the most aggressive post-billing optimization cannot recover cost that was 
 | FinOps dashboards / recommendations | Post-billing | Provides insight with no enforcement path |
 | Cloud-native advisors (Trusted Advisor, Azure Advisor) | Post-billing | Advisory only; no learned policy; no intent context |
 
-### 2.3 Positioning Against Cloud-Native Advisors
+### 2.3 Related Work — Explicit Positioning
 
-AWS Trusted Advisor, Azure Advisor, and GCP Recommender represent the current state of the art in cloud cost governance. All three share a fundamental architectural constraint: they operate on billing and utilization data that is already 24–72 hours old, produce advisory recommendations with no enforcement mechanism, and have no knowledge of *why* a workload was provisioned the way it was. A recommendation to "resize this EC2 instance" is generated without any context about whether the instance is serving a latency-sensitive API, running a one-time ETL job, or sitting idle after a project was cancelled.
+The following systems represent the closest prior work to PBCP. For each, one sentence describes what it does; one sentence identifies the gap that PBCP closes.
 
-PBCP differs on every dimension: it acts before execution rather than after billing, it enforces decisions rather than suggesting them, and it grounds every governance action in structured workload intent — the declared purpose, team, expected duration, and resource requirements that a cloud-native advisor never sees. The result is a system that prevents waste rather than reporting it.
+#### CILP (Cloud Intent-to-Policy Learning)
+
+CILP is an ML-based cloud resource management system that learns workload-type-specific provisioning policies from historical submission metadata, mapping intent signals to suggested configurations based on observed patterns in past runs. It does not model the *cost of the governance intervention itself* — there is no cost-of-correction formulation, no pre-execution waste simulation, and no principled metric for measuring alignment between declared intent and observed runtime behavior (no IFS equivalent), so it cannot distinguish cases where blocking is worse than allowing a wasteful workload to proceed.
+
+#### Sedai
+
+Sedai is an autonomous cloud cost management platform that continuously monitors live resource utilization and autonomously right-sizes instances, adjusts autoscaling policies, and switches between on-demand and spot capacity using ML-driven decisions. It acts entirely on observed utilization *after execution begins* — there is no mechanism to intercept a workload before provisioning, no simulation of predicted waste at submission time, and no concept of workload intent, so the pre-billing gap (resources provisioned, waste begins, Sedai corrects later) remains structurally intact.
+
+#### GCP Workload Manager
+
+GCP Workload Manager is a framework for deploying, validating, and monitoring workloads against Google-defined best-practice rules, primarily targeting SAP HANA and enterprise SQL Server deployments on GCP. It validates resource configurations against a fixed set of compliance rules at deployment time but does not model cost prevention, simulate pre-execution waste, learn policies from execution history, support non-SAP workload types, or generalize across cloud providers.
+
+#### AWS Compute Optimizer
+
+AWS Compute Optimizer uses ML to analyze up to 14 days of historical utilization metrics and generates right-sizing recommendations for EC2 instances, Lambda functions, EBS volumes, and Auto Scaling groups. Recommendations are retrospective and advisory-only — they arrive after costs have been incurred, require human action to apply, carry no enforcement mechanism, and are generated with no knowledge of workload intent (why the instance was provisioned, what team owns it, or whether the use pattern was expected) — leaving both the pre-billing gap and the intent gap unaddressed.
+
+#### Cloud-Native Advisors (AWS Trusted Advisor, Azure Advisor, GCP Recommender)
+
+AWS Trusted Advisor, Azure Advisor, and GCP Recommender represent the production state of the art in cloud cost governance. All three operate on billing and utilization data that is already 24–72 hours old, produce advisory recommendations with no enforcement mechanism, and have no knowledge of *why* a workload was provisioned the way it was. A recommendation to "resize this EC2 instance" carries no context about whether it serves a latency-sensitive API, runs a one-time ETL job, or has been idle since a project was cancelled.
+
+#### Summary Positioning Table
+
+| System | When It Acts | Enforcement | Intent-Aware | Pre-Execution Simulation | Gaming-Resistant Metric |
+|---|---|---|---|---|---|
+| AWS Trusted Advisor / Azure Advisor / GCP Recommender | Post-billing (24–72 hr lag) | Advisory only | No | No | No |
+| AWS Compute Optimizer | Post-execution (retrospective) | Advisory only | No | No | No |
+| GCP Workload Manager | At deployment (static rules) | Compliance check | No | No | No |
+| Sedai | Runtime (live utilization) | Autonomous (post-execution) | No | No | No |
+| CILP | Pre-provision (learned policies) | Policy suggestion | Partial | No | No |
+| **PBCP (this work)** | **Pre-execution (submission time)** | **Enforced (BLOCK / AUTO_CORRECT)** | **Yes — NLP-inferred** | **Yes — EV-based** | **Yes — CPS × ESR** |
+
+PBCP is the only system in this comparison that (a) acts before any resource is provisioned, (b) enforces decisions rather than suggesting them, (c) grounds governance in structured workload intent extracted from natural language, (d) simulates predicted waste using workload-specific priors before execution, and (e) reports impact through a gaming-resistant metric (Valid CPS = CPS × ESR) that no prior system defines.
 
 ### 2.4 Why Workload Semantics Matter
 
@@ -1298,7 +1331,9 @@ This closes the loop: runtime anomalies improve pre-execution prevention.
 
 ---
 
-### 5.10 AI Workload Governance Module
+### 5.10 AI Workload Governance Module *(Extension — Out of Core Paper Scope)*
+
+> **Extension Notice:** This module addresses a distinct cost domain — LLM token waste and embedding efficiency — that complements but does not depend on the core PBCP framework. The main research argument (pre-execution simulation + intent-behavior divergence detection + CPS/IFS dual-metric) is complete without it. For the primary paper submission, treat this section as a clearly bounded **extension**: include it as a brief subsection with a forward pointer ("full treatment reserved for follow-up"), or cut it entirely. The AI governance story is a natural second paper. Including it in full weakens focus without adding to the core novelty claim.
 
 **Owner:** Sreeja Katta
 **Location:** `/ai_governance/`
@@ -1507,9 +1542,46 @@ The synthetic dataset is explicitly modeled after the schemas and cost structure
 
 The workload distributions (over-provisioning rates, utilization variance by job type, idle cluster frequency) are parameterized to reflect enterprise-scale patterns reported in the Flexera 2024 State of the Cloud Report, which found that 32% of cloud spend is wasted and over-provisioning accounts for the largest share. This grounds the experiment results in realistic, externally validated waste rates rather than arbitrarily chosen anomaly injection frequencies.
 
+#### Real Workload Trace Integration (Recommended for Publication)
+
+The synthetic dataset is sufficient for prototyping and unit-level evaluation, but peer reviewers at venues like SoCC will ask whether the cost numbers hold under realistic workload distributions. The following public traces provide externally validated workload arrival patterns, utilization distributions, and job duration profiles that would replace synthetic distributions with empirically grounded ones:
+
+- **Google Cluster Trace 2019** (Wilkes et al.): ~10,000 machines over 8 weeks; per-task CPU/memory utilization, job arrival times, and failure records. Use to calibrate ETL and batch workload distributions (`cpu_utilization_avg`, `actual_duration_hours`) and to validate the simulation engine's utilization predictions against real trace data (Experiment 0).
+- **Alibaba Cluster Trace 2018** (Alibaba Group): ~4,000 machines, ~10M tasks; includes online services and batch jobs. Use to calibrate the streaming and adhoc workload distributions and to stress-test the runtime optimizer against arrival-rate variance that synthetic generation cannot reproduce.
+
+**Minimum required:** rerun Experiment 0 (Simulation Calibration) and Experiment 5 (System Roll-Up) with utilization distributions sampled from Google Cluster Trace 2019 job records rather than synthetic Beta distributions. Report both synthetic and trace-driven results side by side. If CPS degrades materially on trace-driven data, that is a finding — not a failure — and should be reported as the system's operating envelope under realistic workload variance.
+
 ---
 
 ## 7. Experiments & Evaluation Plan
+
+### Experiment 0 — Simulation Calibration (Precondition)
+
+**Goal:** Validate that the simulation engine's predicted utilization and cost are accurate before any CPS claims are made. This experiment is a precondition for Experiments 1–5: if predicted waste is systematically over-estimated, CPS numbers are artifacts of simulation error rather than actual prevention.
+
+**Owner:** Keerthi Rapolu
+
+**Protocol:**
+
+1. Select 50 historical workloads from the baseline group (run without PBCP intervention)
+2. For each workload, run `SimulationEngine.simulate(intent)` using the workload's submitted `WorkloadIntent`
+3. Compare `SimulationResult.predicted_utilization` against `runtime_metrics.cpu_utilization_avg` (actual)
+4. Compare `SimulationResult.predicted_cost` against `cost_records.actual_cost_usd` (actual)
+
+**Metrics:**
+
+| Metric | Target | Failure Condition |
+|---|---|---|
+| MAE on utilization prediction | < 0.10 | Simulation predictions are unreliable for cost estimation |
+| RMSE on cost prediction | < 15% of mean actual cost | Cost model is systematically miscalibrated |
+| Prediction bias (mean predicted − actual utilization) | ≈ 0 (< ±0.05) | Positive bias → inflated waste predictions → inflated CPS |
+| Calibration by workload type | MAE < 0.12 per type | Type-specific priors need recalibration |
+
+**Stratification:** Report calibration separately for ETL, adhoc, and ml_training workloads. The embedding KNN prior is most uncertain for workload types with fewer than 30 historical neighbors; `prior_confidence = "low"` records should be excluded from CPS claims or reported separately with a confidence annotation.
+
+**Expected outcome:** MAE < 0.08 on utilization; RMSE < 12% on cost; no significant bias. If these targets are not met, the KNN embedding model or cost model requires recalibration before CPS claims are reported.
+
+---
 
 ### Experiment 1 — Pre-Provision Cost Prevention
 
@@ -1913,13 +1985,15 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 | Decision | Choice | Rationale |
 |---|---|---|
+| **Target publication venue** | **ACM SoCC** (primary); USENIX HotCloud (fallback) | SoCC demands real workload traces, rigorous systems evaluation, and strong baselines — all achievable here. The metric-first framing (CPS + IFS as primary contribution, PBCP as demonstration vehicle) fits SoCC's systems-with-measurement audience. HotCloud is appropriate if experimental scope is reduced to a position-paper format, but carries lower impact. EuroSys is an alternative if the cross-cloud normalization and enforcement story is strengthened with larger-scale evaluation. **Venue choice shapes everything**: SoCC requires the Google Cluster Trace integration (Section 6.2) and confidence intervals on all metrics; HotCloud does not. |
 | Simulation engine is synchronous for prod, async for dev/sandbox | Synchronous for `prod`/`staging`; async non-blocking for `dev`/`sandbox` | Synchronous prevention is essential for high-stakes workloads; async path avoids friction in development workflows. Target: < 2 sec synchronous, < 50 ms async. |
 | Policy enforcement is hard, not soft | REJECT and AUTO_CORRECT have binding effect | Advisory-only governance is the existing failed approach; enforcement is the core contribution |
-| CPS is the primary metric | Defined as prevented / potential | Provides a single comparable number across stages, providers, and workload types |
+| CPS is the primary metric | Defined as prevented / potential, gated by ESR constraint | Provides a single comparable number across stages, providers, and workload types; ESR prevents gaming |
 | Right-sizing targets 70% utilization | Configurable; default 70% | 70% leaves headroom for load spikes while eliminating gross over-provisioning |
 | Policy source tracked (`builtin` vs `learned`) | Field on Policy schema | Enables ablation: evaluate system with only builtin, only learned, or combined policies |
 | Behavior vector space | Normalized numeric features | Avoids cross-modal alignment problem of embedding text and metrics in same space |
 | ML attribution uses RandomForest | Baseline model | Interpretable feature importances; explainability is a first-class requirement |
+| AI Governance Module scope | Extension only; not a core paper contribution | Token/embedding governance is a distinct cost domain that dilutes the core story (pre-billing gap + CPS/IFS metric). Reserve for follow-up. |
 
 ### Open Questions
 
@@ -1961,16 +2035,57 @@ The following interfaces define the boundary between Keerthi's prevention module
 
 ## 11. References
 
-> *(To be populated during paper writing. Suggested areas to cite:)*
+> *(Full bibliography to be completed during paper writing. Entries below are verified citations; starred items ★ are highest priority for the related work section.)*
 
-- Pre-billing cost management in cloud systems (distinguish from post-billing FinOps)
-- Cloud cost waste studies (AWS Trusted Advisor, Azure Advisor aggregate reports)
-- Workload-aware resource provisioning (Kubernetes VPA, YARN autoscaling)
-- Retrieval-Augmented Generation foundations (Lewis et al., 2020)
-- Anomaly detection in distributed systems and MTTD benchmarks
-- Random Forest for classification in system management (interpretability literature)
-- LLM inference cost optimization (token efficiency, prompt compression)
-- Synthetic workload benchmarking methodology
+### Cloud Cost Governance & FinOps
+
+- ★ **Flexera 2024 State of the Cloud Report.** Flexera, 2024. *(Cited for the 32% cloud waste statistic and over-provisioning as the leading cause; grounds the experiment injection rates.)*
+- **Amazon Web Services. AWS Cost and Usage Report (CUR) v2 Data Dictionary.** AWS Documentation, 2024. *(Schema reference for Table 2 and cost_normalizer pricing tables.)*
+- **Microsoft Azure. Cost Management + Billing Export Format.** Azure Documentation, 2024.
+- **Google Cloud. Cloud Billing Data Export to BigQuery.** GCP Documentation, 2024.
+- ★ **Amazon Web Services. AWS Compute Optimizer User Guide.** AWS Documentation, 2024. *(Related work: retrospective ML right-sizing; advisory-only; no intent modeling.)*
+- **Google Cloud. Workload Manager Documentation.** GCP Documentation, 2024. *(Related work: static rule-based workload validation; SAP-only scope.)*
+
+### Workload Traces & Cluster Datasets
+
+- ★ **Wilkes, J. et al. "Google Cluster Workload Traces 2019."** Google Technical Report, 2020. *(Primary trace dataset for Experiment 0 calibration and Experiment 5 real-distribution runs.)*
+- ★ **Alibaba Group. "Alibaba Cluster Trace Program."** GitHub, 2018–2020. *(Secondary trace dataset for streaming/adhoc workload distribution calibration.)*
+
+### Workload-Aware Resource Provisioning
+
+- **Verma, A. et al. "Large-scale cluster management at Google with Borg."** EuroSys 2015. *(Context for cluster-level workload scheduling and resource isolation.)*
+- **Hindman, B. et al. "Mesos: A Platform for Fine-Grained Resource Sharing in the Data Center."** NSDI 2011. *(Context for two-level resource scheduling and isolation.)*
+- **Burns, B. et al. "Borg, Omega, and Kubernetes."** ACM Queue 14(1), 2016. *(Background for Kubernetes VPA as a related provisioning mechanism.)*
+
+### Anomaly Detection & Intent-Behavior Modeling
+
+- ★ **Chandola, V., Banerjee, A., & Kumar, V. "Anomaly Detection: A Survey."** ACM Computing Surveys 41(3), 2009. *(Background for threshold-based vs. learned anomaly detection baselines.)*
+- **Xu, W. et al. "Detecting Large-Scale System Problems by Mining Console Logs."** SOSP 2009. *(Context for log-based anomaly detection in cloud systems.)*
+
+### Contrastive Learning & Metric Learning
+
+- ★ **Oord, A. et al. "Representation Learning with Contrastive Predictive Coding."** arXiv:1807.03748, 2018. *(Foundation for InfoNCE loss used in the joint contrastive embedding (f + g → R^32) in Section 5.9.)*
+- **Chen, T. et al. "A Simple Framework for Contrastive Learning of Visual Representations."** ICML 2020. *(SimCLR; relevant to the contrastive training setup for the IFS encoders.)*
+
+### Retrieval-Augmented Generation
+
+- **Lewis, P. et al. "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks."** NeurIPS 2020. *(Foundation for the RAG-based RCA in Section 5.9; directly cited.)*
+
+### NLP for System Management
+
+- ★ **Sanh, V. et al. "DistilBERT, a distilled version of BERT."** arXiv:1910.01108, 2019. *(Architecture for the IntentInferenceEngine 6-class workload-type classifier in Section 5.1.)*
+
+### Approximate Nearest-Neighbor Search
+
+- **Johnson, J., Douze, M., & Jégou, H. "Billion-scale similarity search with GPUs."** IEEE Transactions on Big Data, 2019. *(FAISS; used for KNN workload embedding retrieval in Section 5.1.3 and incident retrieval in RAG-RCA.)*
+
+### Decision Theory for System Management
+
+- **Wald, A. "Statistical Decision Functions."** Wiley, 1950. *(Theoretical foundation for the EV-based CostOfCorrectionModel in Section 5.2.)*
+
+### Evaluation Methodology
+
+- **Lowell, D. et al. "Unconventional Wisdom: Lessons and Lore from System Benchmarking."** SIGOPS OSR 30(3), 1996. *(Methodology: why synthetic benchmarks must be externally validated against real traces.)*
 
 ---
 

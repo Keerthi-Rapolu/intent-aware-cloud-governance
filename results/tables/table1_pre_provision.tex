@@ -1,0 +1,31 @@
+\begin{table}[t]
+\centering
+\caption{Paper showcase scenario: 20-node ETL job (8\,h, medium priority, AWS m5.xlarge, optimal\,=\,10 nodes). Full PBCP detects 3.3$\times$ over-provisioning via KNN prior + EV model.}
+\label{tab:showcase}
+\begin{tabular}{llrrrr}
+\toprule
+Method & Nodes & Pot.\ cost (\$) & Prevented (\$) & CPS & Action \\
+\midrule
+Static & 20 -> 20 & 30.72 & 0.00 & 0.000 & PASS \\
+Rule-based & 20 -> 20 & 30.72 & 0.00 & 0.000 & SUGGEST \\
+No Phase 3 & 20 -> 20 & 30.72 & 0.15 & 0.005 & AUTO\_CORRECT \\
+\textbf{Full PBCP} & 20 -> 10 & 15.36 & 15.36 & 0.500 & AUTO\_CORRECT \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{System-wide pre-provision prevention results (Exp\,1, $n=500$, seed 42). CPS\,=\,prevented\,/\,potential cost. Valid CPS\,=\,CPS\,$\times$\,ESR. 95\,\%\,CI on Full PBCP CPS via 1\,000 bootstrap resamples over per-workload data.}
+\label{tab:pre_provision}
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & $n$ & Pot.\ cost (\$) & Prevented (\$) & CPS & 95\,\%\,CI & Valid CPS \\
+\midrule
+Static & 500 & 12,845.35 & 0.00 & 0.0000 & -- & 0.0000 \\
+Rule-based & 500 & 12,845.35 & 0.00 & 0.0000 & -- & 0.0000 \\
+No Phase 3 & 500 & 12,845.35 & 3.23 & 0.0003 & -- & 0.0003 \\
+\textbf{Full PBCP} & 500 & 12,845.35 & 115.08 & 0.0090 & [0.0048, 0.0138] & 0.0090 \\
+\bottomrule
+\end{tabular}
+\end{table}

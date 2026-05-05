@@ -1,0 +1,23 @@
+\begin{table}[t]
+\centering
+\caption{Phase 3 convergence results (Exp\,6): mean CPS $\pm$ 95\,\%\,CI across 5 seeds (42--46), 50 workloads per generation. CI computed as $\bar{x} \pm 1.96\,\sigma/\sqrt{5}$. $^\dagger$Gens 8--9 contain baseline-only records; non-baseline CPS is 0 by construction.}
+\label{tab:convergence}
+\begin{tabular}{llcccc}
+\toprule
+Gen & Stage & Full PBCP & No Phase 3 & Policy-only & Embedding-only \\
+\midrule
+0 & pre-prov & 0.314 $\pm$ 0.076 & 0.002 $\pm$ 0.000 & 0.000 & 0.108 $\pm$ 0.033 \\
+1 & pre-prov & 0.404 $\pm$ 0.054 & 0.003 $\pm$ 0.000 & 0.000 & 0.096 $\pm$ 0.036 \\
+2 & pre-prov & 0.331 $\pm$ 0.049 & 0.002 $\pm$ 0.001 & 0.000 & 0.109 $\pm$ 0.033 \\
+3 & pre-prov & 0.288 $\pm$ 0.041 & 0.002 $\pm$ 0.000 & 0.000 & 0.101 $\pm$ 0.043 \\
+\midrule
+4 & runtime & 0.727 $\pm$ 0.004 & 0.013 $\pm$ 0.001 & 0.000 & 0.013 $\pm$ 0.001 \\
+5 & runtime & 0.733 $\pm$ 0.009 & 0.013 $\pm$ 0.002 & 0.000 & 0.013 $\pm$ 0.002 \\
+6 & runtime & 0.598 $\pm$ 0.002 & 0.000 & 0.000 & 0.000 \\
+7 & runtime & 0.597 $\pm$ 0.001 & 0.000 & 0.000 & 0.000 \\
+\midrule
+8$^\dagger$ & baseline & 0.000 & 0.000 & 0.000 & 0.000 \\
+9$^\dagger$ & baseline & 0.000 & 0.000 & 0.000 & 0.005 $\pm$ 0.001 \\
+\bottomrule
+\end{tabular}
+\end{table}

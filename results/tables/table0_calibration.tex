@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\caption{Simulation calibration results (Exp\,0). Utilisation metrics compare predicted vs.\ actual CPU utilisation across 96 workloads (seed 42). Cost rel-RMSE compares predicted vs.\ actual potential cost. 95\,\% CI on MAE computed via 1\,000 bootstrap resamples.}
+\label{tab:calibration}
+\begin{tabular}{lrrrrr}
+\toprule
+Workload type & $n$ & MAE & 95\,\%\,CI & RMSE & Bias \\
+\midrule
+etl & 16 & 0.0634 & [0.0427,\ 0.0832] & 0.0761 & -0.0069 \\
+adhoc & 16 & 0.0437 & [0.0329,\ 0.0546] & 0.0488 & +0.0386 \\
+ml\_training & 16 & 0.0261 & [0.0160,\ 0.0374] & 0.0333 & +0.0077 \\
+llm\_pipeline & 16 & 0.0687 & [0.0537,\ 0.0846] & 0.0756 & +0.0687 \\
+batch & 16 & 0.0339 & [0.0176,\ 0.0515] & 0.0485 & -0.0306 \\
+streaming & 16 & 0.0883 & [0.0774,\ 0.1007] & 0.0915 & +0.0883 \\
+\midrule
+\textbf{Overall} & 96 & 0.0540 & [0.0469,\ 0.0612] & 0.0655 & +0.0276 \\
+\bottomrule
+\end{tabular}
+\end{table}

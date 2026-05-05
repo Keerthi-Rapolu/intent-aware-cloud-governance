@@ -1,0 +1,40 @@
+# Generated databases (large; regenerate with generate_dataset.py)
+data/full/
+*.duckdb
+
+# Model checkpoints
+intent_model/checkpoints/
+*.pt
+*.bin
+*.safetensors
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Experiment artifacts (generated; commit only final figures)
+results/*.csv
+results/*.json
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime logs
+*.log
+
+# Temp / scratch
+_schema.py

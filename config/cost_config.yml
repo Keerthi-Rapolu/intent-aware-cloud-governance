@@ -1,0 +1,75 @@
+aws:
+  m5.xlarge:
+    vcpu: 4
+    memory_gb: 16
+    od_hourly: 0.192
+    spot_discount: 0.70
+  m5.2xlarge:
+    vcpu: 8
+    memory_gb: 32
+    od_hourly: 0.384
+    spot_discount: 0.70
+  m5.4xlarge:
+    vcpu: 16
+    memory_gb: 64
+    od_hourly: 0.768
+    spot_discount: 0.70
+  r5.xlarge:
+    vcpu: 4
+    memory_gb: 32
+    od_hourly: 0.252
+    spot_discount: 0.70
+  c5.xlarge:
+    vcpu: 4
+    memory_gb: 8
+    od_hourly: 0.170
+    spot_discount: 0.70
+  p3.2xlarge:
+    vcpu: 8
+    memory_gb: 61
+    od_hourly: 3.060
+    spot_discount: 0.70
+
+azure:
+  Standard_D4s_v3:
+    vcpu: 4
+    memory_gb: 16
+    od_hourly: 0.192
+    spot_discount: 0.60
+  Standard_D8s_v3:
+    vcpu: 8
+    memory_gb: 32
+    od_hourly: 0.384
+    spot_discount: 0.60
+  Standard_E4s_v3:
+    vcpu: 4
+    memory_gb: 32
+    od_hourly: 0.252
+    spot_discount: 0.60
+  Standard_NC6:
+    vcpu: 6
+    memory_gb: 56
+    od_hourly: 0.900
+    spot_discount: 0.60
+
+gcp:
+  n2-standard-4:
+    vcpu: 4
+    memory_gb: 16
+    od_hourly: 0.190
+    spot_discount: 0.80
+  n2-standard-8:
+    vcpu: 8
+    memory_gb: 32
+    od_hourly: 0.380
+    spot_discount: 0.80
+  n2-highmem-4:
+    vcpu: 4
+    memory_gb: 32
+    od_hourly: 0.248
+    spot_discount: 0.80
+  a2-highgpu-1g:
+    vcpu: 12
+    memory_gb: 85
+    od_hourly: 3.670
+    spot_discount: 0.80

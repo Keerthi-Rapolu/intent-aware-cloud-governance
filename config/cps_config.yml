@@ -1,0 +1,6 @@
+esr_threshold: 0.95
+valid_cps_target: 0.30
+stages:
+  - pre_provision
+  - runtime
+  - ai_workload

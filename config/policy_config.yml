@@ -1,0 +1,63 @@
+policies:
+  - policy_id: etl_auto_shutdown
+    workload_type: etl
+    condition: auto_shutdown_hours_exceeds
+    threshold: 4.0
+    action: REJECT
+    description: ETL jobs must auto-shutdown within 4 hours
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: adhoc_max_nodes
+    workload_type: adhoc
+    condition: node_count_exceeds
+    threshold: 5.0
+    action: AUTO_CORRECT
+    description: Adhoc jobs capped at 5 nodes
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: llm_token_budget_required
+    workload_type: llm_pipeline
+    condition: token_budget_missing
+    threshold: 0.0
+    action: REJECT
+    description: LLM pipelines must declare a token budget
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: adhoc_spot_required
+    workload_type: adhoc
+    condition: spot_not_enabled
+    threshold: 0.0
+    action: SUGGEST
+    description: Adhoc jobs should use spot/preemptible instances
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: etl_spot_required
+    workload_type: etl
+    condition: spot_not_enabled
+    threshold: 0.0
+    action: SUGGEST
+    description: ETL jobs should use spot/preemptible instances
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: batch_auto_shutdown
+    workload_type: batch
+    condition: auto_shutdown_hours_exceeds
+    threshold: 12.0
+    action: REJECT
+    description: Batch jobs must auto-shutdown within 12 hours
+    source: builtin
+    confidence: 1.0
+
+  - policy_id: ml_training_auto_shutdown
+    workload_type: ml_training
+    condition: auto_shutdown_hours_exceeds
+    threshold: 24.0
+    action: REJECT
+    description: ML training jobs must auto-shutdown within 24 hours
+    source: builtin
+    confidence: 1.0

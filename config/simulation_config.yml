@@ -1,0 +1,21 @@
+suggest_fraction: 0.15
+target_utilization: 0.70
+ev_block_min: 0.0
+ev_auto_correct_min: 0.0
+
+failure_cost:
+  low: 10
+  medium: 50
+  high: 200
+  critical: 2000
+
+correction_failure_rates:
+  etl: 0.05
+  adhoc: 0.08
+  ml_training: 0.12
+  llm_pipeline: 0.06
+  batch: 0.05
+  streaming: 0.15
+
+delay_cost_block_per_hour: 25.0
+delay_cost_auto_correct: 0.50
