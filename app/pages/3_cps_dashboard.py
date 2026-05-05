@@ -2,12 +2,13 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
-from app.components.data_loader import (
+from components.data_loader import (
     load_kpis, load_cps_by_stage, load_cps_by_type, load_ifs_distribution,
 )
-from app.components.charts import (
+from components.charts import (
     cps_by_stage_bar, cps_by_type_bar, ifs_histogram, ifs_category_donut,
 )
 

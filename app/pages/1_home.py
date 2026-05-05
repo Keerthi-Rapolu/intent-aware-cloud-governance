@@ -2,9 +2,10 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
-from app.components.data_loader import load_kpis
+from components.data_loader import load_kpis
 
 st.set_page_config(page_title="Home — PBCP", layout="wide")
 st.title("PBCP — Pre-Billing Cost Prevention Framework")
