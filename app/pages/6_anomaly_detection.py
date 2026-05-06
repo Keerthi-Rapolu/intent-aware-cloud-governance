@@ -1,4 +1,4 @@
-"""Page 6 — IBD Detection: IFS vs CPU-Threshold Detector (Exp 3 / Sreeja Katta)."""
+"""Page 6 — Anomaly Detection (Exp 3 / Sreeja Katta)."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -17,11 +17,11 @@ from components.charts import (
     ibd_roc_scatter,
 )
 
-st.set_page_config(page_title="IBD Detection — PBCP", layout="wide")
-st.title("IBD Detection")
+st.set_page_config(page_title="Anomaly Detection — PBCP", layout="wide")
+st.title("Anomaly Detection")
 st.caption(
-    "Experiment 3 — IFS-based detector vs CPU-threshold baseline · "
-    "IBD threshold θ = 0.65 · Owner: Sreeja Katta"
+    "Catching misbehaving jobs early — our smart detector vs a simple CPU check · "
+    "Owner: Sreeja Katta"
 )
 
 m       = load_ibd_detector_metrics()

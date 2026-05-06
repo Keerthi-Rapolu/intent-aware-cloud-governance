@@ -1,4 +1,4 @@
-"""Page 3 — CPS Dashboard."""
+"""Page 3 — Cost Savings Dashboard."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -12,9 +12,9 @@ from components.charts import (
     cps_by_stage_bar, cps_by_type_bar, ifs_histogram, ifs_category_donut,
 )
 
-st.set_page_config(page_title="CPS Dashboard — PBCP", layout="wide")
-st.title("CPS Dashboard")
-st.caption("Cost Prevention Score + Intent-Fit Score · non-baseline records only")
+st.set_page_config(page_title="Cost Savings Dashboard — PBCP", layout="wide")
+st.title("Cost Savings Dashboard")
+st.caption("How much cloud waste was prevented · broken down by stage and workload type")
 
 kpis    = load_kpis()
 stage_df = load_cps_by_stage()

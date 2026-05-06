@@ -1,4 +1,4 @@
-"""Page 7 — Prevention Feedback Loop (anomaly_rca / Sreeja Katta)."""
+"""Page 7 — How the System Learns (anomaly_rca / Sreeja Katta)."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -18,11 +18,11 @@ from components.charts import (
     ifs_histogram,
 )
 
-st.set_page_config(page_title="Prevention Feedback — PBCP", layout="wide")
-st.title("Prevention Feedback Loop")
+st.set_page_config(page_title="How the System Learns — PBCP", layout="wide")
+st.title("How the System Learns")
 st.caption(
-    "IBD-flagged workloads → root cause inference → learned PolicySuggestions · "
-    "IBD threshold θ = 0.65 · Owner: Sreeja Katta"
+    "Every bad job teaches the system a new rule — so the next similar job gets caught before it wastes money · "
+    "Owner: Sreeja Katta"
 )
 
 summary  = load_prevention_summary()
