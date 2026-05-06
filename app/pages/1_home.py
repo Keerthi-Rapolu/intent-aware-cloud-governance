@@ -69,6 +69,7 @@ billed at full rate, with no retroactive remedy.
 | Pre-Provision (Exp 1) | Showcase CPS = 0.500 (20 → 10 nodes) |
 | Runtime (Exp 2) | Scenario C: $97.92 prevented (runaway ML) |
 | System Roll-up (Exp 5) | Valid CPS = 0.559 · ESR = 0.981 |
+| IBD Detection (Exp 3) | IFS detector F1 = 0.761 vs. CPU-threshold F1 = 0.605 |
 | Convergence (Exp 6) | Peak CPS = 0.733 vs. 0.013 baseline (58×) |
 
 † Cost rel-RMSE reflects duration uncertainty: simulator predicts cost using

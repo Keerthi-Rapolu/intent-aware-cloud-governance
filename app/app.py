@@ -38,8 +38,10 @@ Use the sidebar to navigate between pages:
 | Page | What it shows |
 |------|---------------|
 | **Home** | System overview, KPIs, architecture |
-| **Dataset Explorer** | Browse and filter 500 synthetic workloads |
-| **CPS Dashboard** | Prevention metrics by stage and workload type |
-| **Live Demo** | Type a workload description — see live simulation |
-| **Phase 3 Convergence** | Learning curve across 10 generations, 4 scenarios |
+| **Explore Workloads** | Browse and filter 500 synthetic workloads |
+| **Cost Savings Dashboard** | Prevention metrics by stage and workload type |
+| **Live Demo** | Type a workload description — see live simulation + IFS score |
+| **System Improvement Over Time** | Learning curve across 10 generations, 4 scenarios |
+| **Anomaly Detection** | Smart detector vs CPU-threshold comparison (Exp 3) |
+| **How the System Learns** | The 4-step feedback loop that turns mistakes into rules |
 """)

@@ -41,13 +41,48 @@ if not _PIPELINE_AVAILABLE:
         "```"
     )
     st.divider()
-    st.subheader("Example Output (Exp 2 — Scenario C)")
+    st.subheader("Example Output (Exp 2 — Scenario C: runaway ML job)")
     st.success("AUTO_CORRECT — nodes reduced 20 → 9 | prevented $97.92 | CPS 0.667")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Intervention",   "AUTO_CORRECT")
     c2.metric("Optimal nodes",  "9 / 20 submitted")
     c3.metric("Cost prevented", "$97.92")
     c4.metric("CPS",            "0.667")
+
+    st.divider()
+    st.subheader("🎯 Intent-Fit Score (IFS) — Example")
+    st.caption(
+        "IFS measures how well a job's predicted behaviour matches its declared intent (0–1). "
+        "Below 0.65 triggers the anomaly detector. The score is the weighted average of 4 sub-scores."
+    )
+    ec1, ec2, ec3 = st.columns(3)
+    ec1.metric("IFS", "0.712", help="Weighted: 0.35×type + 0.25×util + 0.20×duration + 0.20×resource")
+    ec2.metric("Category", "minor")
+    ec3.metric("Anomaly flag", "No (above 0.65 threshold)")
+
+    import plotly.graph_objects as go
+    example_sub = {
+        "Job Type\nAlignment": 0.85,
+        "Utilisation\nAlignment": 0.62,
+        "Duration\nAlignment": 0.70,
+        "Resource\nAlignment": 0.68,
+    }
+    bar_colors = ["#d62728" if v < 0.50 else "#ff7f0e" if v < 0.70 else "#2ca02c"
+                  for v in example_sub.values()]
+    eg_fig = go.Figure(go.Bar(
+        x=list(example_sub.keys()), y=list(example_sub.values()),
+        marker_color=bar_colors,
+        text=[f"{v:.3f}" for v in example_sub.values()],
+        textposition="outside",
+    ))
+    eg_fig.add_hline(y=0.65, line_dash="dash", line_color="red", line_width=1.5,
+                     annotation_text="Alert threshold (0.65)", annotation_position="top right",
+                     annotation_font_color="red")
+    eg_fig.update_layout(
+        yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor="#f0f0f0"),
+        plot_bgcolor="white", margin=dict(t=30, b=10), showlegend=False,
+    )
+    st.plotly_chart(eg_fig, use_container_width=True)
     st.stop()
 
 # -- Inputs -----------------------------------------------------------------

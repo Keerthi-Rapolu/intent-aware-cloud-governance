@@ -80,8 +80,8 @@ RC_LABELS = {
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Misbehaving Jobs Caught",  f"{summary['n_ibd']:,}",
           help="Jobs whose behaviour score fell below 0.65")
-c2.metric("New Rules Auto-Generated", f"{summary['n_feedback_generated']:,}",
-          help="Prevention rules the system created by itself from repeated patterns")
+c2.metric("Flagged Runs → Rules", f"{summary['n_feedback_generated']:,}",
+          help="IBD-flagged runs whose (job type, failure mode) pattern recurred ≥ 3 times — enough evidence for the system to auto-generate a prevention rule. Many runs can share one rule; see 'Rules Learned So Far' for the distinct rule count.")
 c3.metric("Avg Score of Bad Jobs",    f"{summary['mean_ifs']:.3f}",
           help="Average behaviour score of the flagged jobs (lower = worse)")
 c4.metric("Estimated Waste Caught",   f"${summary['total_cost_impact']:,.0f}",

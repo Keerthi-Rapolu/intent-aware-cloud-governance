@@ -68,6 +68,12 @@ st.divider()
 
 # -- Raw table --------------------------------------------------------------
 with st.expander("Raw convergence data"):
+    st.caption(
+        "**Generation 9 shows 0.000 for all scenarios** — this is expected. "
+        "Gen 9 is the final wrap-up pass: no new active-stage workloads are evaluated "
+        "and no intervention records are produced, so CPS is undefined (displayed as 0). "
+        "Peak performance is at gen 7–8; gen 9 is structural, not a regression."
+    )
     display = df.copy()
     # Round all float columns
     float_cols = [c for c in display.columns if c != "generation"]
