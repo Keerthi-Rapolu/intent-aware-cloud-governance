@@ -192,23 +192,108 @@ with col_r:
     })
 
 st.divider()
-st.subheader("Intent-Fit Score (IFS) Estimate")
+st.subheader("🎯 Intent-Fit Score (IFS)")
+st.caption("How well does this job's predicted behaviour match what it said it would do? — Sreeja Katta")
 
-ifs_color = {
-    "well_aligned": "green", "minor": "blue",
-    "significant": "orange", "severe": "red",
-}.get(ifs_rec.ifs_category, "grey")
+import plotly.graph_objects as go
 
-c1, c2, c3 = st.columns(3)
-c1.metric("IFS",              f"{ifs_rec.ifs:.3f}")
-c2.metric("Category",         ifs_rec.ifs_category)
-c3.metric("Type alignment",   f"{ifs_rec.type_alignment:.3f}")
+# ── IFS score card ─────────────────────────────────────────────────────────
+ifs_meta = {
+    "well_aligned": ("green",  "✅ Well Aligned",  "This job looks healthy — behaviour matches intent."),
+    "minor":        ("#f0a500","⚠️ Minor Divergence","Small gap between intent and predicted behaviour."),
+    "significant":  ("orange", "🔶 Significant",    "Noticeable gap — worth investigating."),
+    "severe":       ("red",    "🚨 Severe Divergence","Large gap — this job is likely misbehaving."),
+}
+color, badge, verdict_msg = ifs_meta.get(ifs_rec.ifs_category, ("grey", "Unknown", ""))
 
-with st.expander("IFS sub-scores"):
-    st.json({
-        "type_alignment":     ifs_rec.type_alignment,
-        "util_alignment":     ifs_rec.util_alignment,
-        "duration_alignment": ifs_rec.duration_alignment,
-        "resource_alignment": ifs_rec.resource_alignment,
-        "detail":             ifs_rec.detail,
-    })
+# Gauge chart
+gauge = go.Figure(go.Indicator(
+    mode="gauge+number",
+    value=ifs_rec.ifs,
+    number={"font": {"size": 48}, "valueformat": ".3f"},
+    gauge={
+        "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#555"},
+        "bar":  {"color": color, "thickness": 0.25},
+        "steps": [
+            {"range": [0.00, 0.50], "color": "#fde8e8"},
+            {"range": [0.50, 0.70], "color": "#fef3e2"},
+            {"range": [0.70, 0.85], "color": "#e8f5e9"},
+            {"range": [0.85, 1.00], "color": "#c8e6c9"},
+        ],
+        "threshold": {
+            "line": {"color": "red", "width": 3},
+            "thickness": 0.8,
+            "value": 0.65,
+        },
+    },
+    title={"text": f"<b>{badge}</b>", "font": {"size": 18}},
+))
+gauge.update_layout(height=260, margin=dict(t=40, b=0, l=30, r=30))
+
+col_gauge, col_verdict = st.columns([1, 1])
+with col_gauge:
+    st.plotly_chart(gauge, use_container_width=True)
+
+with col_verdict:
+    st.markdown(f"### {badge}")
+    st.markdown(verdict_msg)
+    st.markdown(f"**Score:** `{ifs_rec.ifs:.3f}` &nbsp;|&nbsp; **Category:** `{ifs_rec.ifs_category}`")
+
+    # Anomaly detector verdict
+    IBD_THRESHOLD = 0.65
+    if ifs_rec.ifs < IBD_THRESHOLD:
+        # infer root cause from lowest sub-score
+        sub = {
+            "Job type mismatch":      ifs_rec.type_alignment,
+            "Utilisation mismatch":   ifs_rec.util_alignment,
+            "Duration mismatch":      ifs_rec.duration_alignment,
+            "Resource over-provision": ifs_rec.resource_alignment,
+        }
+        root_cause_label = min(sub, key=lambda k: sub[k])
+        st.error(
+            f"🚨 **Anomaly Detector would flag this job.**  \n"
+            f"IFS {ifs_rec.ifs:.3f} is below the alert threshold of {IBD_THRESHOLD}.  \n"
+            f"Most likely cause: **{root_cause_label}** "
+            f"(sub-score: {sub[root_cause_label]:.3f})"
+        )
+        st.info(
+            "💡 **Feedback loop:** If this pattern repeats 3+ more times, "
+            "the system will auto-generate a prevention rule so future similar "
+            "jobs are caught *before* resources are created."
+        )
+    else:
+        st.success(
+            f"✅ **Anomaly Detector: No flag.**  \n"
+            f"IFS {ifs_rec.ifs:.3f} is above the alert threshold of {IBD_THRESHOLD}."
+        )
+
+# ── Sub-score breakdown ─────────────────────────────────────────────────────
+st.markdown("#### Sub-score Breakdown")
+st.caption("Each bar shows how well one dimension of the job aligns with its declared intent. Red = problem area.")
+
+sub_scores = {
+    "Job Type\nAlignment":       ifs_rec.type_alignment,
+    "Utilisation\nAlignment":    ifs_rec.util_alignment,
+    "Duration\nAlignment":       ifs_rec.duration_alignment,
+    "Resource\nAlignment":       ifs_rec.resource_alignment,
+}
+bar_colors = ["#d62728" if v < 0.50 else "#ff7f0e" if v < 0.70 else "#2ca02c"
+              for v in sub_scores.values()]
+
+bar_fig = go.Figure(go.Bar(
+    x=list(sub_scores.keys()),
+    y=list(sub_scores.values()),
+    marker_color=bar_colors,
+    text=[f"{v:.3f}" for v in sub_scores.values()],
+    textposition="outside",
+))
+bar_fig.add_hline(y=0.65, line_dash="dash", line_color="red", line_width=1.5,
+                  annotation_text="Alert threshold (0.65)",
+                  annotation_position="top right",
+                  annotation_font_color="red")
+bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
+bar_fig.update_layout(
+    yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor="#f0f0f0"),
+    plot_bgcolor="white", margin=dict(t=30, b=10), showlegend=False,
+)
+st.plotly_chart(bar_fig, use_container_width=True)
