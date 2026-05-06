@@ -1,0 +1,42 @@
+% --- (a) Dual-metric summary ---
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{Value} & \textbf{Gate} \\
+\midrule
+
+System CPS & 0.1303 & --- \\
+Active-stage CPS & 0.5694 & --- \\
+ESR & 0.9800 $\checkmark$ & $\geq 0.95$ \\
+Valid CPS & 0.5580 $\checkmark$ & $\geq 0.30$ \\
+Mean IFS & 0.9190 $\checkmark$ & $\geq 0.60$ \\
+IBD-flagged & 15.0\% & --- \\
+Workloads & 500 & --- \\
+\bottomrule
+\end{tabular}
+
+
+% --- (b) CPS by stage ---
+\begin{tabular}{lr}
+\toprule
+\textbf{Stage} & \textbf{CPS} \\
+\midrule
+
+pre\_provision & 0.4251 \\
+runtime & 0.6027 \\
+baseline & 0.0000 \\
+\bottomrule
+\end{tabular}
+
+
+% --- (c) IFS distribution ---
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Category} & \textbf{$n$} & \textbf{Fraction} & \textbf{Mean IFS} \\
+\midrule
+
+Well-aligned ($\geq 0.85$) & 425 & 85.00\% & 0.967 \\
+Minor (0.70--0.85) & 0 & 0.00\% & 0.000 \\
+Significant (0.50--0.70) & 75 & 15.00\% & 0.648 \\
+Severe ($< 0.50$) & 0 & 0.00\% & 0.000 \\
+\bottomrule
+\end{tabular}
