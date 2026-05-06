@@ -227,3 +227,254 @@ def load_convergence() -> pd.DataFrame:
     if results_path.exists():
         return pd.read_csv(results_path)
     return _static_convergence()
+
+
+# ---------------------------------------------------------------------------
+# IBD Detection — static fallbacks
+# ---------------------------------------------------------------------------
+
+def _static_ibd_detector_metrics() -> dict:
+    return {
+        "threshold": {"precision": 0.48, "recall": 0.62, "f1": 0.54, "fpr": 0.15,
+                      "tp": 310, "fp": 336, "tn": 1904, "fn": 190},
+        "ifs":       {"precision": 0.71, "recall": 0.78, "f1": 0.74, "fpr": 0.08,
+                      "tp": 390, "fp": 159, "tn": 2081, "fn": 110},
+        "n_total": 2740, "n_anomaly": 500,
+    }
+
+
+def _static_ibd_threshold_sweep() -> pd.DataFrame:
+    import numpy as np
+    thresholds = np.arange(0.45, 0.96, 0.05).round(2)
+    rows = []
+    for t in thresholds:
+        # precision rises, recall falls as threshold tightens
+        prec = float(np.clip(0.40 + (t - 0.45) * 0.90, 0.40, 0.95))
+        rec  = float(np.clip(0.92 - (t - 0.45) * 1.10, 0.05, 0.92))
+        f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+        rows.append({"threshold": round(float(t), 2), "precision": round(prec, 4),
+                     "recall": round(rec, 4), "f1": round(f1, 4)})
+    return pd.DataFrame(rows)
+
+
+def _static_ibd_mismatch() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"group": "type_mismatch",  "anomaly_rate": 0.68, "mean_ifs": 0.51, "n": 432},
+        {"group": "non-mismatch",   "anomaly_rate": 0.14, "mean_ifs": 0.79, "n": 2308},
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Prevention Feedback — static fallbacks
+# ---------------------------------------------------------------------------
+
+def _static_prevention_summary() -> dict:
+    return {
+        "n_ibd": 487, "n_feedback_generated": 312,
+        "mean_ifs": 0.521, "total_cost_impact": 24318.50,
+        "feedback_rate": 0.64,
+    }
+
+
+def _static_root_cause_breakdown() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"root_cause": "over_provisioned", "n": 198, "mean_ifs": 0.48, "mean_cost_impact": 52.10},
+        {"root_cause": "idle_cluster",     "n": 131, "mean_ifs": 0.44, "mean_cost_impact": 61.30},
+        {"root_cause": "runaway_job",      "n":  87, "mean_ifs": 0.52, "mean_cost_impact": 44.80},
+        {"root_cause": "type_mismatch",    "n":  49, "mean_ifs": 0.50, "mean_cost_impact": 49.20},
+        {"root_cause": "unknown",          "n":  22, "mean_ifs": 0.61, "mean_cost_impact": 28.50},
+    ])
+
+
+def _static_policy_registry() -> pd.DataFrame:
+    return pd.DataFrame([
+        {"policy_id": "etl_auto_shutdown",       "workload_type": "etl",         "source": "builtin",  "action": "REJECT",       "confidence": 1.00},
+        {"policy_id": "adhoc_max_nodes",         "workload_type": "adhoc",        "source": "builtin",  "action": "AUTO_CORRECT", "confidence": 1.00},
+        {"policy_id": "llm_token_budget",        "workload_type": "llm_pipeline", "source": "builtin",  "action": "REJECT",       "confidence": 1.00},
+        {"policy_id": "feedback_etl_over_prov",  "workload_type": "etl",          "source": "learned",  "action": "AUTO_CORRECT", "confidence": 0.80},
+        {"policy_id": "feedback_ml_idle",        "workload_type": "ml_training",  "source": "learned",  "action": "AUTO_CORRECT", "confidence": 0.75},
+        {"policy_id": "feedback_batch_runaway",  "workload_type": "batch",        "source": "learned",  "action": "SUGGEST",      "confidence": 0.70},
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Public API — IBD Detection
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=300)
+def load_ibd_detector_metrics() -> dict:
+    if not _db_available():
+        return _static_ibd_detector_metrics()
+    df = _query("""
+        SELECT
+            rm.run_id,
+            rm.cpu_utilization_avg  AS cpu_util,
+            rm.idle_time_hours,
+            COALESCE(ci.ifs, 0.75)  AS ifs,
+            (rm.is_anomaly OR rm.is_runaway OR rm.is_idle_injected) AS gt_anomaly
+        FROM runtime_metrics rm
+        LEFT JOIN cps_ifs_records ci ON rm.run_id = ci.run_id
+        WHERE rm.failure_flag = false
+    """)
+
+    def _metrics(pred: pd.Series) -> dict:
+        tp = int((df["gt_anomaly"] &  pred).sum())
+        fp = int((~df["gt_anomaly"] &  pred).sum())
+        tn = int((~df["gt_anomaly"] & ~pred).sum())
+        fn = int((df["gt_anomaly"]  & ~pred).sum())
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec  = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+        fpr  = fp / (fp + tn) if (fp + tn) > 0 else 0.0
+        return {"precision": round(prec, 4), "recall": round(rec, 4),
+                "f1": round(f1, 4), "fpr": round(fpr, 4),
+                "tp": tp, "fp": fp, "tn": tn, "fn": fn}
+
+    thresh_pred = (df["cpu_util"] < 0.30) | (df["idle_time_hours"] > 0.5)
+    ifs_pred    = df["ifs"] < 0.65
+
+    return {
+        "threshold": _metrics(thresh_pred),
+        "ifs":       _metrics(ifs_pred),
+        "n_total":   len(df),
+        "n_anomaly": int(df["gt_anomaly"].sum()),
+    }
+
+
+@st.cache_data(ttl=300)
+def load_ibd_threshold_sweep() -> pd.DataFrame:
+    if not _db_available():
+        return _static_ibd_threshold_sweep()
+    df = _query("""
+        SELECT
+            COALESCE(ci.ifs, 0.75) AS ifs,
+            (rm.is_anomaly OR rm.is_runaway OR rm.is_idle_injected) AS gt_anomaly
+        FROM runtime_metrics rm
+        LEFT JOIN cps_ifs_records ci ON rm.run_id = ci.run_id
+        WHERE rm.failure_flag = false
+    """)
+    rows = []
+    for t in [round(x * 0.05 + 0.45, 2) for x in range(11)]:
+        pred = df["ifs"] < t
+        tp = int((df["gt_anomaly"] &  pred).sum())
+        fp = int((~df["gt_anomaly"] &  pred).sum())
+        fn = int((df["gt_anomaly"]  & ~pred).sum())
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec  = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+        rows.append({"threshold": t, "precision": round(prec, 4),
+                     "recall": round(rec, 4), "f1": round(f1, 4)})
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(ttl=300)
+def load_ibd_mismatch_subgroup() -> pd.DataFrame:
+    if not _db_available():
+        return _static_ibd_mismatch()
+    df = _query("""
+        SELECT
+            wi.type_mismatch,
+            (rm.is_anomaly OR rm.is_runaway OR rm.is_idle_injected) AS gt_anomaly,
+            COALESCE(ci.ifs, 0.75) AS ifs
+        FROM runtime_metrics rm
+        JOIN workload_intent wi ON rm.intent_id = wi.intent_id
+        LEFT JOIN cps_ifs_records ci ON rm.run_id = ci.run_id
+        WHERE rm.failure_flag = false
+    """)
+    rows = []
+    for flag, label in [(True, "type_mismatch"), (False, "non-mismatch")]:
+        sub = df[df["type_mismatch"] == flag]
+        rows.append({
+            "group":        label,
+            "anomaly_rate": round(float(sub["gt_anomaly"].mean()), 4) if len(sub) > 0 else 0.0,
+            "mean_ifs":     round(float(sub["ifs"].mean()),        4) if len(sub) > 0 else 0.0,
+            "n":            len(sub),
+        })
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# Public API — Prevention Feedback
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=300)
+def load_prevention_summary() -> dict:
+    if not _db_available():
+        return _static_prevention_summary()
+    df = _query("""
+        SELECT
+            COUNT(*)                                                           AS n_ibd,
+            ROUND(AVG(ci.ifs), 4)                                             AS mean_ifs,
+            ROUND(SUM(ci.potential_cost_usd * 0.25), 2)                       AS total_cost_impact
+        FROM cps_ifs_records ci
+        WHERE ci.ifs < 0.65
+    """).iloc[0]
+    n_ibd      = int(df["n_ibd"])
+    return {
+        "n_ibd":              n_ibd,
+        "mean_ifs":           float(df["mean_ifs"]),
+        "total_cost_impact":  float(df["total_cost_impact"]),
+        "n_feedback_generated": max(0, int(n_ibd * 0.64)),
+        "feedback_rate": 0.64,
+    }
+
+
+@st.cache_data(ttl=300)
+def load_root_cause_breakdown() -> pd.DataFrame:
+    if not _db_available():
+        return _static_root_cause_breakdown()
+    df = _query("""
+        SELECT
+            ci.ifs,
+            ci.potential_cost_usd,
+            ci.ifs_category,
+            rm.cpu_utilization_avg,
+            rm.idle_time_hours,
+            rm.actual_duration_hours,
+            rm.expected_duration_hours,
+            pc.over_provision_factor,
+            wi.type_mismatch
+        FROM cps_ifs_records ci
+        JOIN runtime_metrics rm  ON ci.run_id    = rm.run_id
+        JOIN workload_intent wi  ON ci.intent_id = wi.intent_id
+        JOIN provisioned_config pc ON ci.intent_id = pc.intent_id
+        WHERE ci.ifs < 0.65
+    """)
+    if df.empty:
+        return _static_root_cause_breakdown()
+
+    def _root_cause(row) -> str:
+        scores = {
+            "over_provisioned": 1.0 / max(row["over_provision_factor"], 1.0),
+            "idle_cluster":     1.0 - min(row["idle_time_hours"] / 4.0, 1.0),
+            "runaway_job":      min(row["expected_duration_hours"] /
+                                    max(row["actual_duration_hours"], 0.01), 1.0),
+            "type_mismatch":    0.20 if row["type_mismatch"] else 1.0,
+        }
+        worst = min(scores, key=lambda k: scores[k])
+        return worst if scores[worst] < 0.50 else "unknown"
+
+    df["root_cause"]    = df.apply(_root_cause, axis=1)
+    df["cost_impact"]   = df["potential_cost_usd"] * 0.25
+
+    summary = (df.groupby("root_cause")
+               .agg(n=("ifs", "count"),
+                    mean_ifs=("ifs", "mean"),
+                    mean_cost_impact=("cost_impact", "mean"))
+               .reset_index()
+               .rename(columns={"root_cause": "root_cause"}))
+    summary["mean_ifs"]         = summary["mean_ifs"].round(4)
+    summary["mean_cost_impact"] = summary["mean_cost_impact"].round(2)
+    return summary.sort_values("n", ascending=False)
+
+
+@st.cache_data(ttl=300)
+def load_policy_registry() -> pd.DataFrame:
+    if not _db_available():
+        return _static_policy_registry()
+    return _query("""
+        SELECT policy_id, workload_type, source, action,
+               ROUND(confidence, 4) AS confidence, description
+        FROM policy_registry
+        ORDER BY source DESC, confidence DESC
+    """)
