@@ -52,7 +52,7 @@ The two generators share nothing except the cloud pricing rates (which you shoul
   mkdir -p experiments/baselines results/figures app/pages app/components
   ```
 - [x] **Create `.gitignore`** — exclude: `data/full/`, `*.duckdb`, `*.pt`, `*.env`, `__pycache__/`, `.venv/`
-- [ ] **Create virtual environment** and install from `REQUIREMENTS.md`:
+- [x] **Create virtual environment** and install from `REQUIREMENTS.md`:
   ```
   python -m venv .venv
   .venv\Scripts\activate          # Windows
@@ -453,7 +453,7 @@ Sreeja's production implementations replace the stubs — tests validate her wor
                "prevented_cost_usd": 134.40, "cps": 0.70})
       st.success("AUTO_CORRECT: Cluster reduced from 20 → 6 nodes. $134.40 prevented.")
   ```
-- [ ] After Phase 2 is done, replace the hardcoded JSON with real module calls:
+- [x] After Phase 2 is done, replace the hardcoded JSON with real module calls (done in Phase 8 — live_demo.py calls IntentInferenceEngine, PreExecutionSimulator, IFSCalculator; falls back gracefully on Streamlit Cloud):
   ```python
   from intent_model.intent_inference import IntentInferenceEngine
   from simulation_engine.simulator import PreExecutionSimulator
