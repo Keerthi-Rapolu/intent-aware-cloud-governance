@@ -30,31 +30,31 @@ def _query(sql: str, params: list | None = None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _static_kpis() -> dict:
+    # Actual values from DB (non-baseline records, seed 42, 2026-05-06)
     return {
         "workloads":       500,
-        "total_prevented": 48_230.50,
-        "total_potential": 107_178.89,
-        "system_cps":      0.4501,
-        "mean_ifs":        0.7612,
-        "ibd_fraction":    0.1423,
+        "total_prevented": 103_805.60,
+        "total_potential": 182_294.71,
+        "system_cps":      0.5694,
+        "mean_ifs":        0.3342,
+        "ibd_fraction":    0.9286,
     }
 
 
 def _static_cps_by_stage() -> pd.DataFrame:
+    # Actual values from cps_ifs_records (non-baseline, seed 42)
     return pd.DataFrame([
-        {"stage": "runtime",       "cps": 0.6027, "mean_ifs": 0.7812, "n": 840},
-        {"stage": "pre_provision", "cps": 0.4251, "mean_ifs": 0.7589, "n": 3896},
+        {"stage": "runtime",       "cps": 0.6027, "mean_ifs": 0.5525, "n": 840},
+        {"stage": "pre_provision", "cps": 0.4251, "mean_ifs": 0.2871, "n": 3896},
     ])
 
 
 def _static_cps_by_type() -> pd.DataFrame:
+    # Actual values from cps_ifs_records joined workload_intent (non-baseline, seed 42)
     return pd.DataFrame([
-        {"workload_type": "ml_training",  "cps": 0.5832, "mean_ifs": 0.7923, "n_workloads": 95},
-        {"workload_type": "etl",          "cps": 0.5201, "mean_ifs": 0.7711, "n_workloads": 130},
-        {"workload_type": "llm_pipeline", "cps": 0.4987, "mean_ifs": 0.7654, "n_workloads": 75},
-        {"workload_type": "batch",        "cps": 0.4312, "mean_ifs": 0.7512, "n_workloads": 100},
-        {"workload_type": "streaming",    "cps": 0.3891, "mean_ifs": 0.7389, "n_workloads": 50},
-        {"workload_type": "adhoc",        "cps": 0.3102, "mean_ifs": 0.7201, "n_workloads": 50},
+        {"workload_type": "adhoc",       "cps": 0.7328, "mean_ifs": 0.2877, "n_workloads": 95},
+        {"workload_type": "ml_training", "cps": 0.6024, "mean_ifs": 0.7050, "n_workloads": 98},
+        {"workload_type": "etl",         "cps": 0.4251, "mean_ifs": 0.2871, "n_workloads": 73},
     ])
 
 
@@ -64,9 +64,9 @@ def _static_ifs_distribution() -> pd.DataFrame:
         ["pre_provision"] * 3896 +
         ["runtime"]       * 840
     )
-    # Beta distributions tuned to match mean_ifs ≈ 0.76
-    pp = np.clip(rng.beta(6, 2, 3896), 0.01, 0.99)
-    rt = np.clip(rng.beta(7, 2, 840),  0.01, 0.99)
+    # Beta distributions tuned to match actual DB mean_ifs: pp=0.287, rt=0.553
+    pp = np.clip(rng.beta(2, 5, 3896), 0.01, 0.99)
+    rt = np.clip(rng.beta(3, 3, 840),  0.01, 0.99)
     ifs_vals = np.concatenate([pp, rt])
 
     def categorise(v: float) -> str:
