@@ -30,31 +30,31 @@ def _query(sql: str, params: list | None = None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _static_kpis() -> dict:
+    # Actual values from DB (non-baseline records, seed 42, 2026-05-06)
     return {
         "workloads":       500,
-        "total_prevented": 48_230.50,
-        "total_potential": 107_178.89,
-        "system_cps":      0.4501,
-        "mean_ifs":        0.7612,
-        "ibd_fraction":    0.1423,
+        "total_prevented": 103_805.60,
+        "total_potential": 182_294.71,
+        "system_cps":      0.5694,
+        "mean_ifs":        0.3342,
+        "ibd_fraction":    0.9286,
     }
 
 
 def _static_cps_by_stage() -> pd.DataFrame:
+    # Actual values from cps_ifs_records (non-baseline, seed 42)
     return pd.DataFrame([
-        {"stage": "runtime",       "cps": 0.6027, "mean_ifs": 0.7812, "n": 840},
-        {"stage": "pre_provision", "cps": 0.4251, "mean_ifs": 0.7589, "n": 3896},
+        {"stage": "runtime",       "cps": 0.6027, "mean_ifs": 0.5525, "n": 840},
+        {"stage": "pre_provision", "cps": 0.4251, "mean_ifs": 0.2871, "n": 3896},
     ])
 
 
 def _static_cps_by_type() -> pd.DataFrame:
+    # Actual values from cps_ifs_records joined workload_intent (non-baseline, seed 42)
     return pd.DataFrame([
-        {"workload_type": "ml_training",  "cps": 0.5832, "mean_ifs": 0.7923, "n_workloads": 95},
-        {"workload_type": "etl",          "cps": 0.5201, "mean_ifs": 0.7711, "n_workloads": 130},
-        {"workload_type": "llm_pipeline", "cps": 0.4987, "mean_ifs": 0.7654, "n_workloads": 75},
-        {"workload_type": "batch",        "cps": 0.4312, "mean_ifs": 0.7512, "n_workloads": 100},
-        {"workload_type": "streaming",    "cps": 0.3891, "mean_ifs": 0.7389, "n_workloads": 50},
-        {"workload_type": "adhoc",        "cps": 0.3102, "mean_ifs": 0.7201, "n_workloads": 50},
+        {"workload_type": "adhoc",       "cps": 0.7328, "mean_ifs": 0.2877, "n_workloads": 95},
+        {"workload_type": "ml_training", "cps": 0.6024, "mean_ifs": 0.7050, "n_workloads": 98},
+        {"workload_type": "etl",         "cps": 0.4251, "mean_ifs": 0.2871, "n_workloads": 73},
     ])
 
 
@@ -64,9 +64,9 @@ def _static_ifs_distribution() -> pd.DataFrame:
         ["pre_provision"] * 3896 +
         ["runtime"]       * 840
     )
-    # Beta distributions tuned to match mean_ifs ≈ 0.76
-    pp = np.clip(rng.beta(6, 2, 3896), 0.01, 0.99)
-    rt = np.clip(rng.beta(7, 2, 840),  0.01, 0.99)
+    # Beta distributions tuned to match actual DB mean_ifs: pp=0.287, rt=0.553
+    pp = np.clip(rng.beta(2, 5, 3896), 0.01, 0.99)
+    rt = np.clip(rng.beta(3, 3, 840),  0.01, 0.99)
     ifs_vals = np.concatenate([pp, rt])
 
     def categorise(v: float) -> str:
@@ -83,33 +83,41 @@ def _static_ifs_distribution() -> pd.DataFrame:
 
 
 def _static_workloads() -> pd.DataFrame:
-    rng = np.random.default_rng(42)
-    types  = ["etl", "ml_training", "adhoc", "llm_pipeline", "batch", "streaming"]
+    # Counts and injection rates match generate_dataset.py exactly
+    rng   = np.random.default_rng(42)
+    counts = {"etl": 130, "adhoc": 95, "ml_training": 98,
+              "llm_pipeline": 50, "batch": 77, "streaming": 50}
     teams  = ["data-eng", "ml-platform", "analytics", "ai-ops", "infra"]
     envs   = ["production", "staging", "dev"]
-    insts  = ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "r5.xlarge", "p3.2xlarge"]
-    clouds = ["aws", "azure", "gcp"]
-    rows = []
-    for i in range(500):
-        wtype = rng.choice(types)
-        opf   = round(float(rng.uniform(1.0, 3.5)), 2)
-        rows.append({
-            "intent_id":        f"wl-{i:04d}",
-            "workload_name":    f"{wtype}-job-{i:04d}",
-            "workload_type":    wtype,
-            "team":             rng.choice(teams),
-            "environment":      rng.choice(envs),
-            "priority":         rng.choice(["low", "medium", "high", "critical"]),
-            "expected_h":       round(float(rng.uniform(1, 24)), 1),
-            "type_mismatch":    bool(rng.random() < 0.18),
-            "pii_signal":       bool(rng.random() < 0.25),
-            "node_count":       int(rng.integers(2, 40)),
-            "is_over_provisioned": opf > 1.5,
-            "opf":              opf,
-            "use_spot":         bool(rng.random() < 0.35),
-            "instance_type":    rng.choice(insts),
-            "description":      f"Synthetic {wtype} workload {i:04d}",
-        })
+    insts  = {"etl": "m5.2xlarge", "adhoc": "m5.xlarge", "ml_training": "p3.2xlarge",
+              "llm_pipeline": "p3.2xlarge", "batch": "m5.xlarge", "streaming": "m5.xlarge"}
+
+    rows, i = [], 0
+    for wtype, n in counts.items():
+        for _ in range(n):
+            # Only ETL is over-provisioned, at 35% injection rate (matching generator)
+            is_over = (wtype == "etl" and rng.random() < 0.35)
+            opt     = int(rng.integers(4, 12))
+            nodes   = opt * int(rng.choice([2, 3])) if is_over else opt
+            opf     = round(nodes / opt, 2) if is_over else 1.0
+            rows.append({
+                "intent_id":           f"wl-{i:04d}",
+                "workload_name":       f"{wtype}-job-{i:04d}",
+                "workload_type":       wtype,
+                "team":                rng.choice(teams),
+                "environment":         rng.choice(envs),
+                "priority":            rng.choice(["low", "medium", "high", "critical"]),
+                "expected_h":          round(float(rng.uniform(1, 24)), 1),
+                "type_mismatch":       bool(rng.random() < 0.15),
+                "pii_signal":          bool(rng.random() < 0.25),
+                "node_count":          nodes,
+                "is_over_provisioned": is_over,
+                "opf":                 opf,
+                "use_spot":            bool(rng.random() < 0.35),
+                "instance_type":       insts[wtype],
+                "description":         f"Synthetic {wtype} workload {i:04d}",
+            })
+            i += 1
     return pd.DataFrame(rows)
 
 

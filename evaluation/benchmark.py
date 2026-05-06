@@ -2,18 +2,17 @@
 Evaluation Benchmark — CLI orchestrator for PBCP experiments.
 
 Usage:
-    python evaluation/benchmark.py --experiment 0,1,2,6
+    python evaluation/benchmark.py --experiment 0,1,2,3,5,6
     python evaluation/benchmark.py --experiment 0 --db data/full/iacg.duckdb --out results
     python evaluation/benchmark.py --list
 
-Experiments (Keerthi):
-    0  — Simulation Calibration (gate: util MAE < 0.10, cost RMSE < 15%)
-    1  — Pre-Provision Prevention (gate: Full PBCP CPS >= 0.35)
-    2  — Runtime Prevention (3 scenarios)
-    6  — Phase 3 Convergence (5 seeds, 10 generations)
-
-Experiment 5 (System Roll-up with IFS records) is joint with Sreeja and is
-NOT orchestrated here.
+Experiments:
+    0  — Simulation Calibration    (gate: util MAE < 0.10, cost RMSE < 0.40)
+    1  — Pre-Provision Prevention  (gate: Full PBCP CPS >= 0.35)
+    2  — Runtime Prevention        (gate: all 3 scenarios fire >= 1 action)
+    3  — IBD Detection (Sreeja)    (gate: IFS F1 >= threshold F1; mismatch anomaly rate higher)
+    5  — System Roll-up (Sreeja)   (gate: Valid CPS >= 0.30, ESR >= 0.95, mean IFS >= 0.60)
+    6  — Phase 3 Convergence       (gate: Full PBCP peak CPS >= 1.5x No Phase 3)
 """
 from __future__ import annotations
 
@@ -46,6 +45,18 @@ EXPERIMENT_REGISTRY = {
         "module": "experiments.exp2_runtime_prevention",
         "fn":     "run_exp2",
     },
+    "3": {
+        "name": "IBD Detection (Sreeja)",
+        "gate": "IFS detector F1 >= threshold F1; type_mismatch anomaly rate >= non-mismatch",
+        "module": "experiments.exp3_ibd_detection",
+        "fn":     "run_exp3",
+    },
+    "5": {
+        "name": "System Roll-up (Dual-Metric CPS + IFS)",
+        "gate": "Valid CPS >= 0.30, ESR >= 0.95, mean IFS >= 0.60",
+        "module": "experiments.exp5_system_rollup",
+        "fn":     "run_exp5",
+    },
     "6": {
         "name": "Phase 3 Convergence",
         "gate": "Full PBCP peak CPS >= 1.5x No Phase 3 peak CPS",
@@ -62,11 +73,9 @@ def _import_and_run(reg_entry: dict, db_path: str, out_dir: str) -> dict | list 
 
     fn_name = reg_entry["fn"]
     # Match each function's signature
-    if fn_name in ("run_calibration", "run_exp1"):
+    if fn_name in ("run_calibration", "run_exp1", "run_exp3", "run_exp5"):
         return fn(db_path=db_path, output_dir=out_dir)
-    elif fn_name == "run_exp2":
-        return fn(output_dir=out_dir)
-    elif fn_name == "run_exp6":
+    elif fn_name in ("run_exp2", "run_exp6"):
         return fn(output_dir=out_dir)
     return fn()
 
@@ -106,6 +115,12 @@ def run_experiments(
                     gate_passed = bool(result["gate_pass"])
                 elif "gate_util_mae" in result and "gate_cost_rmse" in result:
                     gate_passed = result["gate_util_mae"] and result["gate_cost_rmse"]
+                elif exp_id == "5":
+                    gate_passed = (
+                        result.get("gate_valid_cps", False)
+                        and result.get("gate_esr", False)
+                        and result.get("mean_ifs", 0.0) >= 0.60
+                    )
             elif isinstance(result, list):
                 if exp_id == "2":
                     # Exp 2: all scenarios must fire at least one action
@@ -147,8 +162,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--experiment", "-e",
-        default="0,1,2,6",
-        help="Comma-separated experiment IDs to run (default: 0,1,2,6)",
+        default="0,1,2,3,5,6",
+        help="Comma-separated experiment IDs to run (default: 0,1,2,3,5,6)",
     )
     parser.add_argument(
         "--db",

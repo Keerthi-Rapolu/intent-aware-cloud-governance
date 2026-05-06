@@ -10,6 +10,16 @@ st.set_page_config(page_title="Live Demo — PBCP", layout="wide")
 st.title("Live Demo")
 st.caption("Type a workload description — see intent inference, simulation, and IFS in real time.")
 
+st.info(
+    "**Research prototype — synthetic priors.** "
+    "Utilization predictions come from KNN over a 500-workload synthetic dataset "
+    "(generated with controlled injection rates, not real cloud telemetry). "
+    "Cost figures use published AWS/Azure/GCP on-demand pricing. "
+    "Results illustrate system behavior; production deployment would require "
+    "calibration against an organization's own historical run data.",
+    icon="ℹ️",
+)
+
 # Check whether the ML pipeline modules are available (not on Streamlit Cloud free tier)
 try:
     from intent_model.intent_inference import IntentInferenceEngine  # noqa: F401
@@ -149,9 +159,21 @@ if sim.intervention == "AUTO_CORRECT":
 elif sim.intervention == "BLOCK":
     st.error(f"BLOCK — submission rejected | waste would be ${sim.prevented_cost_usd:.2f}")
 elif sim.intervention == "SUGGEST":
-    st.warning(f"SUGGEST — consider reducing to {sim.optimal_nodes} nodes")
+    st.warning(
+        f"SUGGEST — predicted utilization ({sim.predicted_utilization:.0%}) suggests "
+        f"{sim.optimal_nodes} nodes would suffice vs. {nodes} submitted. "
+        f"EV favors suggestion over forced correction (EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
+    )
 else:
-    st.info(f"PASS — no intervention needed (utilization looks healthy)")
+    if inferred.type_mismatch:
+        st.info(
+            f"PASS — type mismatch detected (declared: {declared_type}, "
+            f"inferred: {inferred.workload_type_inferred}), but the EV model "
+            f"determined correction cost (EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f}) "
+            f"exceeds expected waste. No intervention is net-positive at this submission."
+        )
+    else:
+        st.info("PASS — no intervention needed (utilization looks healthy, no mismatch detected)")
 
 # Row 2: 4 metrics
 c1, c2, c3, c4 = st.columns(4)

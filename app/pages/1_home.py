@@ -9,7 +9,7 @@ from components.data_loader import load_kpis
 
 st.set_page_config(page_title="Home — PBCP", layout="wide")
 st.title("PBCP — Pre-Billing Cost Prevention Framework")
-st.caption("IACG v2.0 Research System · Keerthi Rapolu")
+st.caption("IACG v2.0 Research System · Keerthi Rapolu · Dataset: seed 42, 500 workloads, generated 2026-05-05")
 
 # -- KPIs -------------------------------------------------------------------
 kpis = load_kpis()
@@ -65,10 +65,16 @@ billed at full rate, with no retroactive remedy.
     st.markdown("""
 | Experiment | Result |
 |-----------|--------|
-| Calibration (Exp 0) | Util MAE = 0.054, Cost RMSE = 0.000 |
+| Calibration (Exp 0) | Util MAE = 0.054 · Cost rel-RMSE = 0.306† |
 | Pre-Provision (Exp 1) | Showcase CPS = 0.500 (20 → 10 nodes) |
 | Runtime (Exp 2) | Scenario C: $97.92 prevented (runaway ML) |
-| Convergence (Exp 6) | Peak CPS = 0.733 vs. 0.013 baseline (58x) |
+| System Roll-up (Exp 5) | Valid CPS = 0.559 · ESR = 0.981 |
+| Convergence (Exp 6) | Peak CPS = 0.733 vs. 0.013 baseline (58×) |
+
+† Cost rel-RMSE reflects duration uncertainty: simulator predicts cost using
+expected duration at submission time; actual cost depends on runtime duration
+(±25% variation by design). Pre-execution cost prediction inherently carries
+this uncertainty; 0.306 is within the expected range for submission-time models.
     """)
 
 st.divider()
@@ -76,13 +82,17 @@ st.divider()
 # -- Comparison table -------------------------------------------------------
 st.subheader("PBCP vs. Existing Approaches")
 st.markdown("""
-| Capability | PBCP | Sedai | AWS Compute Optimizer |
-|------------|------|-------|----------------------|
-| Pre-billing prevention | Yes | No | No |
-| Natural language intent | Yes | No | No |
-| KNN workload matching | Yes | No | No |
-| EV decision model | Yes | No | No |
-| IFS alignment scoring | Yes | No | No |
-| Runtime corrections | Yes | Yes | Limited |
-| Multi-cloud | Yes | Yes | AWS only |
+| Capability | PBCP | Sedai¹ | AWS Compute Optimizer² |
+|------------|------|--------|------------------------|
+| Intercepts before any resource is provisioned | **Yes** | No — corrects live utilization | No — retrospective recommendations |
+| Governance grounded in natural-language intent | **Yes** | No | No |
+| KNN workload-similarity priors (FAISS) | **Yes** | No | No |
+| Decision-theoretic intervention (EV model) | **Yes** | No | No |
+| Intent-Fit Score (IFS) alignment metric | **Yes** | No | No |
+| Runtime corrections | **Yes** | Yes | Advisory only |
+| Multi-cloud (AWS / Azure / GCP) | **Yes** | Yes | AWS only |
+| Gaming-resistant metric (CPS × ESR) | **Yes** | No | No |
+
+¹ Sedai autonomously right-sizes live resources (post-execution). Pre-billing interception is out of scope by design.
+² AWS Compute Optimizer analyzes up to 14 days of historical utilization and produces advisory recommendations; no enforcement mechanism.
 """)
