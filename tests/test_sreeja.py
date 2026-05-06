@@ -320,3 +320,244 @@ class TestIntegration:
         tracker.record_simulation(make_sim("a"), ifs=0.90)
         tracker.record_simulation(make_sim("b"), ifs=0.50)
         assert tracker.mean_ifs() == pytest.approx(0.70, rel=1e-4)
+
+
+# ── TestPreventionFeedback ─────────────────────────────────────────────────────
+
+class TestPreventionFeedback:
+    """Tests for anomaly_rca/prevention_feedback.py — IBD feedback loop."""
+
+    def _make_ifs_record(self, intent_id: str, run_id: str, ifs: float,
+                          category: str = "significant",
+                          type_align: float = 0.40,
+                          util_align: float = 0.40,
+                          dur_align: float = 0.40,
+                          res_align: float = 0.40):
+        """Minimal fake IFSRecord duck-typed for AnomalyPreventionFeedback."""
+        class FakeIFSRecord:
+            pass
+        r = FakeIFSRecord()
+        r.intent_id         = intent_id
+        r.run_id            = run_id
+        r.ifs               = ifs
+        r.ifs_category      = category
+        r.type_alignment    = type_align
+        r.util_alignment    = util_align
+        r.duration_alignment = dur_align
+        r.resource_alignment = res_align
+        return r
+
+    @pytest.fixture
+    def registry(self):
+        from policy_engine.policy_registry import PolicyRegistry
+        return PolicyRegistry()
+
+    @pytest.fixture
+    def feedback(self, registry):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        return AnomalyPreventionFeedback(registry)
+
+    def test_well_aligned_records_skipped(self, feedback):
+        rec = self._make_ifs_record("i1", "r1", ifs=0.80)
+        anomalies = feedback.process([rec], {"i1": "etl"})
+        assert anomalies == []
+
+    def test_ibd_record_creates_anomaly(self, feedback):
+        rec = self._make_ifs_record("i2", "r2", ifs=0.55)
+        anomalies = feedback.process([rec], {"i2": "etl"})
+        assert len(anomalies) == 1
+        assert anomalies[0].is_ibd_flagged is True
+
+    def test_anomaly_record_fields(self, feedback):
+        from anomaly_rca.prevention_feedback import AnomalyRecord
+        rec = self._make_ifs_record("i3", "r3", ifs=0.45, category="severe")
+        anomalies = feedback.process([rec], {"i3": "batch"})
+        a = anomalies[0]
+        assert isinstance(a, AnomalyRecord)
+        assert a.intent_id  == "i3"
+        assert a.run_id     == "r3"
+        assert a.ifs        == pytest.approx(0.45)
+        assert a.ifs_category == "severe"
+        assert a.workload_type == "batch"
+
+    def test_cost_impact_severe_is_high(self, feedback):
+        rec = self._make_ifs_record("i4", "r4", ifs=0.40)
+        anomalies = feedback.process([rec], {"i4": "etl"}, {"i4": 200.0})
+        assert anomalies[0].estimated_cost_impact >= 50.0   # >= 50% of 200
+
+    def test_cost_impact_significant_is_moderate(self, feedback):
+        rec = self._make_ifs_record("i5", "r5", ifs=0.60)
+        anomalies = feedback.process([rec], {"i5": "etl"}, {"i5": 200.0})
+        assert 10.0 <= anomalies[0].estimated_cost_impact < 100.0
+
+    def test_policy_generated_after_threshold_count(self, registry):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        feedback = AnomalyPreventionFeedback(registry)
+        # 6 over_provisioned records → confidence = 0.60 → policy added
+        records = [
+            self._make_ifs_record(f"i{k}", f"r{k}", ifs=0.55,
+                                   type_align=0.90, util_align=0.90,
+                                   dur_align=0.90, res_align=0.20)
+            for k in range(6)
+        ]
+        wtype_map = {f"i{k}": "etl" for k in range(6)}
+        feedback.process(records, wtype_map)
+        pol = registry.get("feedback_etl_over_provisioned")
+        assert pol is not None
+
+    def test_no_policy_below_min_count(self, registry):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        feedback = AnomalyPreventionFeedback(registry)
+        # 2 records → confidence=0.20 → below MIN_CONFIDENCE=0.60
+        records = [
+            self._make_ifs_record(f"j{k}", f"s{k}", ifs=0.55,
+                                   type_align=0.90, util_align=0.90,
+                                   dur_align=0.90, res_align=0.20)
+            for k in range(2)
+        ]
+        feedback.process(records, {f"j{k}": "batch" for k in range(2)})
+        assert registry.get("feedback_batch_over_provisioned") is None
+
+    def test_duplicate_policy_not_added_twice(self, registry):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        feedback = AnomalyPreventionFeedback(registry)
+        records = [
+            self._make_ifs_record(f"m{k}", f"t{k}", ifs=0.50,
+                                   type_align=0.90, util_align=0.20,
+                                   dur_align=0.90, res_align=0.90)
+            for k in range(7)
+        ]
+        wtype_map = {f"m{k}": "streaming" for k in range(7)}
+        n_before = len(registry)
+        feedback.process(records, wtype_map)
+        n_after_first = len(registry)
+        feedback.process(records, wtype_map)
+        n_after_second = len(registry)
+        assert n_after_first == n_after_second, "Policy was added twice"
+
+    def test_summary_aggregates_correctly(self, feedback):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        recs = [self._make_ifs_record(f"s{k}", f"u{k}", ifs=0.50) for k in range(3)]
+        anomalies = feedback.process(recs, {f"s{k}": "etl" for k in range(3)})
+        s = feedback.summary(anomalies)
+        assert s["n_ibd"] == 3
+        assert "mean_ifs" in s
+        assert "total_cost_impact" in s
+        assert s["mean_ifs"] == pytest.approx(0.50, rel=1e-4)
+
+    def test_summary_empty_returns_zeros(self, feedback):
+        s = feedback.summary([])
+        assert s["n_ibd"] == 0
+        assert s["mean_ifs"] == 0.0
+        assert s["total_cost_impact"] == 0.0
+
+    def test_unknown_intent_id_defaults_to_wildcard(self, feedback):
+        rec = self._make_ifs_record("unknown_id", "r99", ifs=0.55)
+        # no entry in workload_type_map → defaults to "*"
+        anomalies = feedback.process([rec], {})
+        assert anomalies[0].workload_type == "*"
+
+    def test_root_cause_inferred_from_lowest_subscore(self, feedback):
+        from anomaly_rca.prevention_feedback import _infer_root_cause
+        rec = self._make_ifs_record(
+            "rc_test", "rc_run", ifs=0.50,
+            type_align=0.90, util_align=0.20, dur_align=0.80, res_align=0.80
+        )
+        assert _infer_root_cause(rec) == "idle_cluster"
+
+    def test_root_cause_unknown_when_all_scores_high(self, feedback):
+        from anomaly_rca.prevention_feedback import _infer_root_cause
+        rec = self._make_ifs_record(
+            "rc2", "rc2r", ifs=0.60,
+            type_align=0.80, util_align=0.70, dur_align=0.75, res_align=0.72
+        )
+        # All sub-scores >= 0.50, so root cause should be "unknown"
+        assert _infer_root_cause(rec) == "unknown"
+
+
+# ── TestExp3IBDDetection ───────────────────────────────────────────────────────
+
+class TestExp3IBDDetection:
+    """Unit tests for exp3_ibd_detection.py detector logic (no DB required)."""
+
+    def _make_run(self, **kwargs):
+        defaults = dict(
+            run_id="run-e3-1",
+            intent_id="int-e3-1",
+            cpu_util=0.50,
+            mem_util=0.60,
+            idle_time_hours=0.0,
+            actual_duration_hours=4.0,
+            expected_duration_hours=4.0,
+            is_anomaly=False,
+            is_runaway=False,
+            is_idle_injected=False,
+            workload_type="etl",
+            type_mismatch=False,
+            type_mismatch_confidence=0.0,
+            wi_expected_dur=4.0,
+            over_provision_factor=1.0,
+            ifs=0.80,
+            ifs_category="well_aligned",
+        )
+        defaults.update(kwargs)
+        return defaults
+
+    def test_ground_truth_anomaly_flag(self):
+        from experiments.exp3_ibd_detection import _is_anomaly_gt
+        assert _is_anomaly_gt(self._make_run(is_anomaly=True))  is True
+        assert _is_anomaly_gt(self._make_run(is_runaway=True))  is True
+        assert _is_anomaly_gt(self._make_run(is_idle_injected=True)) is True
+        assert _is_anomaly_gt(self._make_run()) is False
+
+    def test_threshold_detector_cpu_below(self):
+        from experiments.exp3_ibd_detection import _threshold_detector
+        assert _threshold_detector(self._make_run(cpu_util=0.20)) is True
+        assert _threshold_detector(self._make_run(cpu_util=0.50)) is False
+
+    def test_threshold_detector_idle_time(self):
+        from experiments.exp3_ibd_detection import _threshold_detector
+        assert _threshold_detector(self._make_run(idle_time_hours=1.0)) is True
+        assert _threshold_detector(self._make_run(idle_time_hours=0.0)) is False
+
+    def test_ifs_detector_below_threshold(self):
+        from experiments.exp3_ibd_detection import _ifs_detector
+        assert _ifs_detector(self._make_run(ifs=0.60)) is True
+        assert _ifs_detector(self._make_run(ifs=0.80)) is False
+
+    def test_compute_metrics_perfect_detector(self):
+        from experiments.exp3_ibd_detection import _compute_metrics, _is_anomaly_gt
+        # All anomalies detected, no false positives
+        data = [
+            self._make_run(run_id=f"r{i}", is_anomaly=True,  ifs=0.50) for i in range(5)
+        ] + [
+            self._make_run(run_id=f"r{i+5}", is_anomaly=False, ifs=0.80) for i in range(5)
+        ]
+        metrics = _compute_metrics(data, lambda r: r["ifs"] < 0.65)
+        assert metrics["precision"] == pytest.approx(1.0)
+        assert metrics["recall"]    == pytest.approx(1.0)
+        assert metrics["f1"]        == pytest.approx(1.0)
+        assert metrics["fpr"]       == pytest.approx(0.0)
+
+    def test_compute_metrics_random_detector(self):
+        from experiments.exp3_ibd_detection import _compute_metrics
+        data = [self._make_run(run_id=f"r{i}", is_anomaly=(i % 2 == 0)) for i in range(10)]
+        # Always-false detector
+        metrics = _compute_metrics(data, lambda r: False)
+        assert metrics["tp"] == 0
+        assert metrics["fp"] == 0
+        assert metrics["recall"] == 0.0
+
+    def test_type_mismatch_analysis_separates_groups(self):
+        from experiments.exp3_ibd_detection import _type_mismatch_analysis
+        data = (
+            [self._make_run(run_id=f"m{i}", type_mismatch=True,
+                             is_anomaly=True, ifs=0.50) for i in range(5)] +
+            [self._make_run(run_id=f"n{i}", type_mismatch=False,
+                             is_anomaly=False, ifs=0.85) for i in range(5)]
+        )
+        tm = _type_mismatch_analysis(data)
+        assert tm["mismatch_n"] == 5
+        assert tm["non_mismatch_n"] == 5
+        assert tm["mismatch_anomaly_rate"] > tm["non_mismatch_anomaly_rate"]
+        assert tm["mismatch_mean_ifs"]     < tm["non_mismatch_mean_ifs"]
