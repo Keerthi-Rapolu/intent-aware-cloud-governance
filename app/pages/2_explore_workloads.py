@@ -1,4 +1,4 @@
-"""Page 2 — Dataset Explorer."""
+"""Page 2 — Explore Workloads."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -8,8 +8,8 @@ import streamlit as st
 import pandas as pd
 from components.data_loader import load_workloads
 
-st.set_page_config(page_title="Dataset Explorer — PBCP", layout="wide")
-st.title("Dataset Explorer")
+st.set_page_config(page_title="Explore Workloads — PBCP", layout="wide")
+st.title("Explore Workloads")
 st.caption("500 synthetic workloads · seed 42 · IACG v2.0")
 
 df = load_workloads()

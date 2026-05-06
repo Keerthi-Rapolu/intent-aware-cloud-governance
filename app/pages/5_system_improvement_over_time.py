@@ -1,4 +1,4 @@
-"""Page 5 — Phase 3 Convergence."""
+"""Page 5 — System Improvement Over Time."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -8,9 +8,9 @@ import streamlit as st
 from components.data_loader import load_convergence
 from components.charts import convergence_line
 
-st.set_page_config(page_title="Phase 3 Convergence — PBCP", layout="wide")
-st.title("Phase 3 Convergence")
-st.caption("10 generations × 50 workloads · 5 seeds (42–46) · mean ± 95% CI")
+st.set_page_config(page_title="System Improvement Over Time — PBCP", layout="wide")
+st.title("System Improvement Over Time")
+st.caption("The system learns from past jobs and gets better at preventing waste with each batch")
 
 df = load_convergence()
 
