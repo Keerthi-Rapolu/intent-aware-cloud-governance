@@ -1,0 +1,5 @@
+anomaly_rate,detector,f1,fn,fp,fpr,mean_ifs,n,overprov_rate,precision,recall,sub_table,tn,tp
+,threshold,0.6054,2612,1835,0.084,,,,0.6502,0.5663,a,20022,3411
+,ifs,0.7608,418,3106,0.1421,,,,0.6434,0.9306,a,18751,5605
+0.2275,type_mismatch,,,,,0.6521,4057,0.1161,,,b,,
+0.2141,non_mismatch,,,,,0.6447,23823,0.1438,,,b,,

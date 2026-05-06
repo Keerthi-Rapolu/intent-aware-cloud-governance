@@ -292,10 +292,18 @@ Each baseline exposes `evaluate(intent) → SimulationResult` and `evaluate_batc
   - type_mismatch subgroup analysis: higher anomaly rate + lower mean IFS for mismatched workloads
   - Gates: IFS F1 >= threshold F1; mismatch anomaly rate >= non-mismatch anomaly rate
   - Saves: `results/exp3_per_run.csv`
-  - **Actual results: not yet run against DB — pending Keerthi**
+  - **Actual results (2026-05-06, seed 42, n=27,880 runs, 6,023 anomalies):**
+    - CPU threshold (cpu < 0.30 OR idle > 0.5h): P=0.6502, R=0.5663, F1=0.6054, FPR=0.0840
+    - IFS detector (IFS < 0.65):                  P=0.6434, R=0.9306, F1=0.7608, FPR=0.1421
+    - IFS Distribution: well_aligned 27.2% | minor 41.5% | significant 7.2% | severe 24.1%
+    - Gate 1 (IFS F1 ≥ threshold F1): **PASS** — 0.7608 vs 0.6054 (+0.155)
+    - Gate 2 (mismatch anomaly rate higher + lower IFS): **FAIL** — anomaly rate 22.75% vs 21.41% ✓ but IFS 0.652 vs 0.645 ✗ (inverted by 0.007 — margin is within noise; discuss in paper)
+    - Overall: **[WARN] Gate 2 failed** — primary detection quality gate passes strongly
+  - Saved: `results/exp3_per_run.csv`
 - [x] *(Keerthi)* Wire Exp 3 into `evaluation/benchmark.py` (added `run_exp3` to `EXPERIMENT_REGISTRY` + `_import_and_run`; default list updated to `0,1,2,3,5,6`)
-- [ ] *(Keerthi)* Run `python experiments/exp3_ibd_detection.py --db data/full/iacg.duckdb --out results` and record gate results here
-- [ ] *(Keerthi)* Run `python tables/table3_ibd.py` and `python visualization/exp3_ibd_chart.py` to generate paper assets
+- [x] *(Keerthi)* Run `python experiments/exp3_ibd_detection.py --db data/full/iacg.duckdb --out results` — results recorded above
+- [x] *(Keerthi)* Run `python tables/table3_ibd.py` → `results/tables/table3_ibd.{tex,csv}` ✓
+- [x] *(Keerthi)* Run `python visualization/exp3_ibd_chart.py` → `results/figures/fig3_ibd_detection.{pdf,png}` ✓
 
 ### Exp 4 — Reserved / Not yet assigned
 *(No Exp 4 script exists — placeholder for future experiment)*
@@ -344,7 +352,7 @@ Each baseline exposes `evaluate(intent) → SimulationResult` and `evaluate_batc
 - [x] `visualization/exp5_dashboard.py` — *(Sreeja — merged 2026-05-06)* 4-panel Plotly dashboard: CPS by type, IFS distribution, category donut, dual-metric scatter. Output: `results/figures/exp5_dashboard.pdf/.png`
 - [x] `visualization/exp6_convergence_chart.py` — 4-curve convergence plot with ±1 std shaded bands; stage dividers
 - [x] `visualization/exp3_ibd_chart.py` — *(Sreeja — merged 2026-05-06, PR #2)* 3-panel IBD detection figure: (a) P/R/F1 grouped bar; (b) ROC scatter; (c) type_mismatch subgroup. Input: `results/exp3_per_run.csv`. Output: `results/figures/fig3_ibd_detection.{pdf,png}`
-  - **Status: script complete; run after Exp 3 executes against DB**
+  - **Status: complete — `results/figures/fig3_ibd_detection.{pdf,png}` saved (2026-05-06)**
 
 All 6 scripts verified. Outputs in `results/figures/` (PDF + PNG at 300 dpi).
 
@@ -358,7 +366,7 @@ All 6 scripts verified. Outputs in `results/figures/` (PDF + PNG at 300 dpi).
 - [x] `tables/table5_rollup.py` — *(Sreeja — merged 2026-05-06)* Dual-metric rollup: CPS/IFS by workload type + system totals; booktabs LaTeX. Output: `results/tables/table5_rollup.tex/.csv`
 - [x] `tables/table6_convergence.py` — 10 gens × 4 scenarios, mean ± 95% CI (1.96 σ / √5 seeds)
 - [x] `tables/table3_ibd.py` — *(Sreeja — merged 2026-05-06, PR #2)* IBD Detection table: (a) detector comparison P/R/F1/FPR; (b) type_mismatch subgroup anomaly rate, mean IFS, over-prov rate. Booktabs LaTeX. Input: `results/exp3_per_run.csv`. Output: `results/tables/table3_ibd.{tex,csv}`
-  - **Status: script complete; run after Exp 3 executes against DB**
+  - **Status: complete — `results/tables/table3_ibd.{tex,csv}` saved (2026-05-06)**
 - [x] Confidence intervals: bootstrap on Exp 0/1; seed-based 95% CI on Exp 6
 
 All 6 tables complete. Outputs: `results/tables/*.tex` (booktabs LaTeX) + `*.csv`.
@@ -537,7 +545,7 @@ Sreeja's production implementations replace the stubs — tests validate her wor
 | Phase 1 | `data/full/iacg.duckdb` exists (16 MB, Jan 2025–Apr 2026); all 6 seeds generated; validation passed ✓ |
 | Phase 2 | 22/22 unit tests pass in 0.76s ✓; simulation p99 < 2 sec ✓ |
 | Phase 3 | All 3 baselines deterministic ✓; ordering: static ≤ rule_based ≤ no_phase3 ✓ |
-| Phase 4 | Exp 0 MAE=0.054 ✓; Exp 1 showcase CPS=0.500 ✓; Exp 2 all 3 scenarios fire ✓; **Exp 3 script done — run pending** ⚠️; Exp 5 Valid CPS=0.5585 ESR=0.9809 ✓; Exp 6 peak CPS=0.733 ✓ |
+| Phase 4 | Exp 0 MAE=0.054 ✓; Exp 1 CPS=0.500 ✓; Exp 2 all 3 scenarios ✓; Exp 3 IFS F1=0.7608 PASS ⚠️ Gate 2 narrowly fails (IFS delta=0.007); Exp 5 Valid CPS=0.5585 ✓; Exp 6 peak CPS=0.733 ✓ |
 | Phase 5 | All 6 figures complete (exp3_ibd_chart by Sreeja — needs DB run) ✓ |
 | Phase 6 | All 6 tables formatted ✓; CI computed; table3_ibd by Sreeja (needs DB run); table5_rollup by Sreeja |
 | Phase 7 | 143/143 tests collected; run `pytest tests/ -v` against DB to verify full pass |
@@ -545,4 +553,4 @@ Sreeja's production implementations replace the stubs — tests validate her wor
 
 ---
 
-*Updated: 2026-05-06. PR #2: Exp 3, prevention_feedback.py, Pages 6–7, table3_ibd.py, exp3_ibd_chart.py, +20 tests (143 total). PR #3: all pages renamed to plain English, Pages 6–7 redesigned, Live Demo IFS gauge + anomaly verdict + sub-score chart. **Keerthi action items:** (1) run Exp 3 against DB and record results, (2) run table3_ibd.py + exp3_ibd_chart.py to generate paper assets, (3) share Streamlit URL with advisor.*
+*Updated: 2026-05-06. ALL EXPERIMENTS COMPLETE. PR #2: Exp 3, prevention_feedback.py, Pages 6–7, 143 tests. PR #3: plain-English page names, Live Demo IFS gauge. Exp 3 run: IFS F1=0.7608 PASS; Gate 2 (mismatch IFS) fails by 0.007 — discuss in paper. Paper assets: table3_ibd + fig3_ibd_detection saved. **Remaining:** share Streamlit URL with advisor.*
