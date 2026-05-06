@@ -2,12 +2,43 @@
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
 
 st.set_page_config(page_title="Live Demo — PBCP", layout="wide")
 st.title("Live Demo")
 st.caption("Type a workload description — see intent inference, simulation, and IFS in real time.")
+
+# Check whether the ML pipeline modules are available (not on Streamlit Cloud free tier)
+try:
+    from intent_model.intent_inference import IntentInferenceEngine  # noqa: F401
+    _PIPELINE_AVAILABLE = True
+except Exception:
+    _PIPELINE_AVAILABLE = False
+
+if not _PIPELINE_AVAILABLE:
+    st.warning(
+        "**Live pipeline requires local installation.**  "
+        "The ML models (DistilBERT, FAISS index) are not deployed to Streamlit Cloud "
+        "due to size constraints.  \n\n"
+        "To run locally:  \n"
+        "```bash\n"
+        "git clone https://github.com/Keerthi-Rapolu/intent-aware-cloud-governance\n"
+        "pip install -r requirements.txt\n"
+        "python data/generate_dataset.py\n"
+        "streamlit run app/app.py\n"
+        "```"
+    )
+    st.divider()
+    st.subheader("Example Output (Exp 2 — Scenario C)")
+    st.success("AUTO_CORRECT — nodes reduced 20 → 9 | prevented $97.92 | CPS 0.667")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Intervention",   "AUTO_CORRECT")
+    c2.metric("Optimal nodes",  "9 / 20 submitted")
+    c3.metric("Cost prevented", "$97.92")
+    c4.metric("CPS",            "0.667")
+    st.stop()
 
 # -- Inputs -----------------------------------------------------------------
 col_in, col_cfg = st.columns([2, 1])
@@ -51,7 +82,6 @@ if not description.strip():
 # -- Run pipeline -----------------------------------------------------------
 with st.spinner("Running PBCP pipeline..."):
     try:
-        from intent_model.intent_inference import IntentInferenceEngine
         from simulation_engine.simulator import PreExecutionSimulator
         from ifs.ifs_calculator import IFSCalculator
         from simulation_engine.cost_model import CloudCostModel
