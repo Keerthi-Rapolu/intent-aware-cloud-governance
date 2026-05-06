@@ -83,33 +83,41 @@ def _static_ifs_distribution() -> pd.DataFrame:
 
 
 def _static_workloads() -> pd.DataFrame:
-    rng = np.random.default_rng(42)
-    types  = ["etl", "ml_training", "adhoc", "llm_pipeline", "batch", "streaming"]
+    # Counts and injection rates match generate_dataset.py exactly
+    rng   = np.random.default_rng(42)
+    counts = {"etl": 130, "adhoc": 95, "ml_training": 98,
+              "llm_pipeline": 50, "batch": 77, "streaming": 50}
     teams  = ["data-eng", "ml-platform", "analytics", "ai-ops", "infra"]
     envs   = ["production", "staging", "dev"]
-    insts  = ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "r5.xlarge", "p3.2xlarge"]
-    clouds = ["aws", "azure", "gcp"]
-    rows = []
-    for i in range(500):
-        wtype = rng.choice(types)
-        opf   = round(float(rng.uniform(1.0, 3.5)), 2)
-        rows.append({
-            "intent_id":        f"wl-{i:04d}",
-            "workload_name":    f"{wtype}-job-{i:04d}",
-            "workload_type":    wtype,
-            "team":             rng.choice(teams),
-            "environment":      rng.choice(envs),
-            "priority":         rng.choice(["low", "medium", "high", "critical"]),
-            "expected_h":       round(float(rng.uniform(1, 24)), 1),
-            "type_mismatch":    bool(rng.random() < 0.18),
-            "pii_signal":       bool(rng.random() < 0.25),
-            "node_count":       int(rng.integers(2, 40)),
-            "is_over_provisioned": opf > 1.5,
-            "opf":              opf,
-            "use_spot":         bool(rng.random() < 0.35),
-            "instance_type":    rng.choice(insts),
-            "description":      f"Synthetic {wtype} workload {i:04d}",
-        })
+    insts  = {"etl": "m5.2xlarge", "adhoc": "m5.xlarge", "ml_training": "p3.2xlarge",
+              "llm_pipeline": "p3.2xlarge", "batch": "m5.xlarge", "streaming": "m5.xlarge"}
+
+    rows, i = [], 0
+    for wtype, n in counts.items():
+        for _ in range(n):
+            # Only ETL is over-provisioned, at 35% injection rate (matching generator)
+            is_over = (wtype == "etl" and rng.random() < 0.35)
+            opt     = int(rng.integers(4, 12))
+            nodes   = opt * int(rng.choice([2, 3])) if is_over else opt
+            opf     = round(nodes / opt, 2) if is_over else 1.0
+            rows.append({
+                "intent_id":           f"wl-{i:04d}",
+                "workload_name":       f"{wtype}-job-{i:04d}",
+                "workload_type":       wtype,
+                "team":                rng.choice(teams),
+                "environment":         rng.choice(envs),
+                "priority":            rng.choice(["low", "medium", "high", "critical"]),
+                "expected_h":          round(float(rng.uniform(1, 24)), 1),
+                "type_mismatch":       bool(rng.random() < 0.15),
+                "pii_signal":          bool(rng.random() < 0.25),
+                "node_count":          nodes,
+                "is_over_provisioned": is_over,
+                "opf":                 opf,
+                "use_spot":            bool(rng.random() < 0.35),
+                "instance_type":       insts[wtype],
+                "description":         f"Synthetic {wtype} workload {i:04d}",
+            })
+            i += 1
     return pd.DataFrame(rows)
 
 

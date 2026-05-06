@@ -76,13 +76,17 @@ st.divider()
 # -- Comparison table -------------------------------------------------------
 st.subheader("PBCP vs. Existing Approaches")
 st.markdown("""
-| Capability | PBCP | Sedai | AWS Compute Optimizer |
-|------------|------|-------|----------------------|
-| Pre-billing prevention | Yes | No | No |
-| Natural language intent | Yes | No | No |
-| KNN workload matching | Yes | No | No |
-| EV decision model | Yes | No | No |
-| IFS alignment scoring | Yes | No | No |
-| Runtime corrections | Yes | Yes | Limited |
-| Multi-cloud | Yes | Yes | AWS only |
+| Capability | PBCP | Sedai¹ | AWS Compute Optimizer² |
+|------------|------|--------|------------------------|
+| Intercepts before any resource is provisioned | **Yes** | No — corrects live utilization | No — retrospective recommendations |
+| Governance grounded in natural-language intent | **Yes** | No | No |
+| KNN workload-similarity priors (FAISS) | **Yes** | No | No |
+| Decision-theoretic intervention (EV model) | **Yes** | No | No |
+| Intent-Fit Score (IFS) alignment metric | **Yes** | No | No |
+| Runtime corrections | **Yes** | Yes | Advisory only |
+| Multi-cloud (AWS / Azure / GCP) | **Yes** | Yes | AWS only |
+| Gaming-resistant metric (CPS × ESR) | **Yes** | No | No |
+
+¹ Sedai autonomously right-sizes live resources (post-execution). Pre-billing interception is out of scope by design.
+² AWS Compute Optimizer analyzes up to 14 days of historical utilization and produces advisory recommendations; no enforcement mechanism.
 """)

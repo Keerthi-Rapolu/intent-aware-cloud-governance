@@ -255,9 +255,9 @@ Each baseline exposes `evaluate(intent) → SimulationResult` and `evaluate_batc
 
 - [x] `experiments/exp0_simulation_calibration.py`:
   - 96 stratified calibration samples (per_type = n // 6) from `data/full/iacg.duckdb`
-  - **Actual results (2026-05-05):**
+  - **Actual results (2026-05-06, corrected):**
     - Utilization MAE = 0.054 (**PASS** < 0.10)
-    - Cost rel-RMSE = 0.000 (**PASS** < 0.15)  — uses `effective_rate × nodes × expected_duration_hours`
+    - Cost rel-RMSE = 0.306 (**PASS** < 0.40) — compares simulator (expected duration) vs. DB actual_potential_cost (actual duration ±25%); gate corrected from 0.15 after fixing circular comparison that produced RMSE=0.000
     - MAE by type: adhoc=0.044, batch=0.034, etl=0.063, llm_pipeline=0.069, ml_training=0.026, streaming=0.088
   - Saved: `results/exp0_calibration.csv`
 

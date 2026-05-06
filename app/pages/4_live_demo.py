@@ -10,6 +10,16 @@ st.set_page_config(page_title="Live Demo — PBCP", layout="wide")
 st.title("Live Demo")
 st.caption("Type a workload description — see intent inference, simulation, and IFS in real time.")
 
+st.info(
+    "**Research prototype — synthetic priors.** "
+    "Utilization predictions come from KNN over a 500-workload synthetic dataset "
+    "(generated with controlled injection rates, not real cloud telemetry). "
+    "Cost figures use published AWS/Azure/GCP on-demand pricing. "
+    "Results illustrate system behavior; production deployment would require "
+    "calibration against an organization's own historical run data.",
+    icon="ℹ️",
+)
+
 # Check whether the ML pipeline modules are available (not on Streamlit Cloud free tier)
 try:
     from intent_model.intent_inference import IntentInferenceEngine  # noqa: F401

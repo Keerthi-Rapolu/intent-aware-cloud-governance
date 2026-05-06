@@ -16,6 +16,25 @@ st.set_page_config(page_title="CPS Dashboard — PBCP", layout="wide")
 st.title("CPS Dashboard")
 st.caption("Cost Prevention Score + Intent-Fit Score · non-baseline records only")
 
+with st.expander("Metric definitions", expanded=False):
+    st.markdown("""
+**CPS (Cost Prevention Score)** = `prevented_cost / potential_cost_without_system` (0–1, higher is better).
+Measures the fraction of wasteful spend that PBCP intercepted before billing.
+
+**Valid CPS** = `CPS × ESR` where ESR (Execution Success Rate) = fraction of workloads that completed successfully.
+The ESR multiplier makes CPS gaming-resistant: a system that blocks aggressively earns low ESR and therefore low Valid CPS regardless of savings claimed.
+
+**IFS (Intent-Fit Score)** = `0.35 × type_alignment + 0.25 × util_alignment + 0.20 × duration_alignment + 0.20 × resource_alignment` (0–1, higher is better).
+Measures how well a workload's declared intent matched its observed runtime behavior.
+Categories: well_aligned ≥ 0.85 · minor ≥ 0.70 · significant ≥ 0.50 · severe < 0.50.
+
+**IBD-flagged (Intent-Behavior Discrepancy)** = fraction of workloads with IFS < 0.70.
+These are workloads where declared intent and actual behavior diverged enough to warrant a governance alert.
+
+> **Note:** Results are computed on a 500-workload synthetic dataset generated with controlled injection rates
+> (35% ETL over-provisioning, 15% type-mismatch, 20% run-level anomaly). See design doc Section 6 for methodology.
+""")
+
 kpis    = load_kpis()
 stage_df = load_cps_by_stage()
 type_df  = load_cps_by_type()
@@ -24,12 +43,16 @@ ifs_df   = load_ifs_distribution()
 # -- KPI row ----------------------------------------------------------------
 c1, c2, c3, c4, c5 = st.columns(5)
 valid_cps = round(kpis["system_cps"] * 1.0, 4)   # ESR=1.0 (no failures in DB)
-c1.metric("System CPS",     f"{kpis['system_cps']:.3f}")
-c2.metric("Valid CPS",      f"{valid_cps:.3f}")
-c3.metric("Mean IFS",       f"{kpis['mean_ifs']:.3f}")
+c1.metric("System CPS",     f"{kpis['system_cps']:.3f}",
+          help="prevented_cost / potential_cost across all active-stage records")
+c2.metric("Valid CPS",      f"{valid_cps:.3f}",
+          help="CPS × ESR — gaming-resistant; ESR penalises over-aggressive blocking")
+c3.metric("Mean IFS",       f"{kpis['mean_ifs']:.3f}",
+          help="Intent-Fit Score: 0–1, higher = declared intent matched runtime behavior")
 c4.metric("IBD-flagged",    f"{kpis['ibd_fraction']*100:.1f}%",
-          help="Fraction of workloads with IFS < 0.70 (Intent-Behavior Discrepancy)")
-c5.metric("Total Prevented",f"${kpis['total_prevented']:,.0f}")
+          help="Workloads with IFS < 0.70 — declared intent diverged from observed behavior")
+c5.metric("Total Prevented",f"${kpis['total_prevented']:,.0f}",
+          help="Sum of prevented_cost_usd across all non-baseline intervention records")
 
 st.divider()
 
