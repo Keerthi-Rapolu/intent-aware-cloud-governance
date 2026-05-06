@@ -14,7 +14,7 @@ from components.charts import (
 
 st.set_page_config(page_title="CPS Dashboard — PBCP", layout="wide")
 st.title("CPS Dashboard")
-st.caption("Cost Prevention Score + Intent-Fit Score · non-baseline records only")
+st.caption("Cost Prevention Score + Intent-Fit Score · non-baseline records only · Dataset: seed 42, 500 workloads")
 
 with st.expander("Metric definitions", expanded=False):
     st.markdown("""
@@ -31,8 +31,18 @@ Categories: well_aligned ≥ 0.85 · minor ≥ 0.70 · significant ≥ 0.50 · s
 **IBD-flagged (Intent-Behavior Discrepancy)** = fraction of workloads with IFS < 0.70.
 These are workloads where declared intent and actual behavior diverged enough to warrant a governance alert.
 
-> **Note:** Results are computed on a 500-workload synthetic dataset generated with controlled injection rates
-> (35% ETL over-provisioning, 15% type-mismatch, 20% run-level anomaly). See design doc Section 6 for methodology.
+> **Note — IFS scoring:** The `ifs` values stored in `cps_ifs_records` were pre-computed by the dataset generator
+> using Beta-distribution sampling tuned to the injection rates (mean ≈ 0.33 for the synthetic population).
+> The live **IFSCalculator** (used in the Live Demo and Exp 5) computes IFS from the 4-sub-score formula and
+> produces higher values for well-provisioned workloads. Both are valid — the DB values reflect population-level
+> alignment signal; the live calculator reflects per-run alignment at the moment of execution.
+>
+> **IBD threshold:** 92.9% of non-baseline records have pre-computed IFS < 0.70. This reflects the generator's
+> deliberate misalignment injection (20% anomaly rate per run, 35% ETL over-provisioning). In a production
+> deployment, IBD rate would reflect actual organizational behavior, not injected faults.
+>
+> **Dataset provenance:** seed 42, 500 workloads, 28,423 runs, generated 2026-05-05. All KPIs are deterministic
+> for this seed. See design doc Section 6 for full methodology.
 """)
 
 kpis    = load_kpis()
