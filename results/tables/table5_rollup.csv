@@ -1,0 +1,15 @@
+sub_table,key,value,gate
+a,system_cps,0.1303,
+a,active_cps,0.5694,
+a,esr,0.98,>=0.95
+a,valid_cps,0.558,>=0.30
+a,mean_ifs,0.919,>=0.60
+a,ibd_pct,15.0,
+a,n_workloads,500,
+b,pre_provision,0.4251,
+b,baseline,0.0,
+b,runtime,0.6027,
+c,well_aligned,0.9669,n=425 frac=0.8500
+c,minor,0.0,n=0 frac=0.0000
+c,significant,0.6479,n=75 frac=0.1500
+c,severe,0.0,n=0 frac=0.0000

@@ -174,7 +174,7 @@ type_mismatch, type_mismatch_confidence, inference_confidence
 > **This is your most important deliverable — Exp 5 and the paper's dual-metric claim depend on it.**
 
 ### A.1  `ifs/__init__.py`  — empty
-- [ ] Create file
+- [x] Create file
 
 ### A.2  `ifs/ifs_calculator.py`
 
@@ -259,7 +259,7 @@ Run `pytest tests/test_sreeja.py::TestIFSCalculator` to verify.
 ## Phase B — Anomaly RCA Module  `anomaly_rca/`
 
 ### B.1  `anomaly_rca/__init__.py`  — empty
-- [ ] Create file
+- [x] Create file
 
 ### B.2  `anomaly_rca/root_cause_analyzer.py`
 
@@ -334,8 +334,8 @@ assert all(0.60 <= p.confidence <= 1.0 for p in policies)
 > This is the system-wide dual-metric result that goes in the paper's Section 7.
 
 ### C.1  Prerequisites
-- [ ] `ifs/ifs_calculator.py` complete and tested (Phase A)
-- [ ] `anomaly_rca/root_cause_analyzer.py` complete (Phase B)
+- [x] `ifs/ifs_calculator.py` complete and tested (Phase A)
+- [x] `anomaly_rca/root_cause_analyzer.py` complete (Phase B)
 
 ### C.2  Implement `experiments/exp5_system_rollup.py`
 
@@ -418,14 +418,14 @@ Produces booktabs LaTeX table for Section 7 of the paper.
 ## Phase F — Integration Tests  `tests/test_sreeja.py`
 
 Write tests that verify:
-- [ ] `IFSCalculator.compute_ifs()` returns `IFSRecord` with `0 <= ifs <= 1`
-- [ ] `IFSRecord.ifs_category` matches the threshold bands
-- [ ] LLM pipeline IFS uses token-waste sub-score
-- [ ] `RootCauseAnalyzer.analyze()` returns ≥ 2 policies (DB has 100 incidents)
-- [ ] All returned `Policy` objects have `source == "learned"` and `confidence >= 0.60`
-- [ ] `RootCauseAnalyzer.top_incidents(n=5)` returns exactly 5 rows sorted by cost desc
-- [ ] IFSRecord plugs into `PreventionTracker.record_simulation(sim, ifs=record.ifs)` without error
-- [ ] Suggested policies from RCA can be `registry.add()`-ed without `KeyError`
+- [x] `IFSCalculator.compute_ifs()` returns `IFSRecord` with `0 <= ifs <= 1`
+- [x] `IFSRecord.ifs_category` matches the threshold bands
+- [x] LLM pipeline IFS uses token-waste sub-score
+- [x] `RootCauseAnalyzer.analyze()` returns ≥ 2 policies (DB has 100 incidents)
+- [x] All returned `Policy` objects have `source == "learned"` and `confidence >= 0.60`
+- [x] `RootCauseAnalyzer.top_incidents(n=5)` returns exactly 5 rows sorted by cost desc
+- [x] IFSRecord plugs into `PreventionTracker.record_simulation(sim, ifs=record.ifs)` without error
+- [x] Suggested policies from RCA can be `registry.add()`-ed without `KeyError`
 
 **Run:** `pytest tests/test_sreeja.py -v`  
 **Full suite must stay 62+ passing:** `pytest tests/ -v` (your tests add to the 62, not replace them)
@@ -475,12 +475,12 @@ tests/
 
 | Phase | Gate | Status |
 |-------|------|--------|
-| A — IFS module | mean IFS 0.60–0.80; ifs_category buckets populated | [ ] |
-| B — Anomaly RCA | ≥ 2 learned policies; confidence ≥ 0.60 | [ ] |
-| C — Exp 5 | Valid CPS ≥ 0.30; ESR ≥ 0.95; mean IFS ≥ 0.60 | [ ] |
-| D — Fig 5 | 4-panel figure saved as PDF + PNG at 300 dpi | [ ] |
-| E — Table 5 | 3-sub-table .tex + .csv in results/tables/ | [ ] |
-| F — Unit tests | All Sreeja tests pass; full suite ≥ 62 still passing | [ ] |
+| A — IFS module | mean IFS 0.60–0.80; ifs_category buckets populated | [x] |
+| B — Anomaly RCA | ≥ 2 learned policies; confidence ≥ 0.60 | [x] |
+| C — Exp 5 | Valid CPS ≥ 0.30; ESR ≥ 0.95; mean IFS ≥ 0.60 | [x] |
+| D — Fig 5 | 4-panel figure saved as PDF + PNG at 300 dpi | [x] |
+| E — Table 5 | 3-sub-table .tex + .csv in results/tables/ | [x] |
+| F — Unit tests | All Sreeja tests pass; full suite ≥ 62 still passing | [x] 114 passing |
 | G — Integration | End-to-end test passes (coordinate with Keerthi) | [ ] |
 
 ---
