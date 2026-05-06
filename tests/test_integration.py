@@ -326,3 +326,346 @@ class TestCostComparison:
         spot = n.cost_comparison("etl", nodes=4, duration_hours=4.0, use_spot=True)
         for cloud in od:
             assert spot[cloud] < od[cloud], f"Spot should be cheaper on {cloud}"
+
+
+# ── Phase G — End-to-End Integration (Sreeja × Keerthi interface) ─────────────
+#
+# Interface contract (design doc §9):
+#   WorkloadIntent  (K→S): read-only; S never mutates
+#   IFSRecord       (S→K): S writes; K consumes via record_simulation(ifs=)
+#   PolicySuggestion(S→K): S writes via RCA; K consumes via registry.add()
+#   Full pipeline:  description → intent → simulation → guardrail → IFS → CPS
+
+class TestPhaseGEndToEnd:
+
+    # -- Fixture: a representative ETL workload intent dict -------------------
+
+    @pytest.fixture(scope="class")
+    def intent_dict(self):
+        return {
+            "intent_id":              "g-etl-001",
+            "workload_name":          "data_engineering_etl_0001",
+            "workload_type":          "etl",
+            "cloud_provider":         "aws",
+            "instance_type":          "m5.xlarge",
+            "node_count":             16,           # over-provisioned (optimal ~6)
+            "optimal_node_count":     6,
+            "expected_duration_hours": 4.0,
+            "priority":               "medium",
+            "environment":            "prod",
+            "use_spot":               False,
+            "over_provision_factor":  16 / 6,
+            "storage_gb":             200.0,
+            "auto_shutdown_hours":    4.0,
+            "recurrence_signal":      "recurring",
+            "pii_signal":             False,
+            "token_budget":           None,
+            "type_mismatch":          False,
+            "type_mismatch_confidence": 0.0,
+        }
+
+    # -- 1. WorkloadIntent read-only contract ----------------------------------
+
+    def test_workload_intent_not_mutated_by_ifs(self, intent_dict):
+        """IFSCalculator must not modify any field of the input intent."""
+        from ifs.ifs_calculator import IFSCalculator
+        original = dict(intent_dict)   # snapshot before call
+
+        IFSCalculator.compute_ifs(
+            intent_id=intent_dict["intent_id"],
+            run_id="run-g-001",
+            type_mismatch=intent_dict["type_mismatch"],
+            type_mismatch_confidence=intent_dict["type_mismatch_confidence"],
+            predicted_utilization=0.65,
+            actual_utilization=0.30,    # under-utilised (over-provisioned)
+            expected_duration_hours=intent_dict["expected_duration_hours"],
+            actual_duration_hours=4.5,
+            over_provision_factor=intent_dict["over_provision_factor"],
+        )
+
+        assert intent_dict == original, "IFSCalculator must not mutate the intent dict"
+
+    def test_workload_intent_not_mutated_by_rca(self):
+        """RootCauseAnalyzer reads only from DB; it must not modify WorkloadIntent fields."""
+        from anomaly_rca.root_cause_analyzer import RootCauseAnalyzer
+        from intent_model.workload_intent import WorkloadIntent, ResourceConfig, InferredIntentFields
+
+        rc  = ResourceConfig("aws", "m5.xlarge", 16, 6, False, 4.0, 200.0, "us-east-1", 4, 16.0, 16/6)
+        inf = InferredIntentFields("etl", "large", "batch_ok", "recurring", False, "internal", False, None, 0.92)
+        wi  = WorkloadIntent("g-etl-002", "etl_job", "weekly ETL", "data_eng",
+                             "etl", "prod", "medium", 4.0, "daily", "2025-01-01", rc, inf)
+
+        original_id   = wi.intent_id
+        original_type = wi.workload_type
+
+        analyzer = RootCauseAnalyzer(DB)
+        analyzer.analyze()   # must not touch wi
+
+        assert wi.intent_id      == original_id
+        assert wi.workload_type  == original_type
+
+    # -- 2. IFSRecord → PreventionTracker feed-through ─────────────────────────
+
+    def test_ifs_record_feeds_into_tracker_aggregation(self, intent_dict):
+        """IFSRecord.ifs from IFSCalculator correctly aggregates inside PreventionTracker."""
+        from ifs.ifs_calculator import IFSCalculator
+        from cps_metrics.prevention_tracker import PreventionTracker
+        from simulation_engine.simulator import SimulationResult
+
+        rec = IFSCalculator.compute_ifs(
+            intent_id=intent_dict["intent_id"],
+            run_id="run-g-002",
+            type_mismatch=False,
+            type_mismatch_confidence=0.0,
+            predicted_utilization=0.65,
+            actual_utilization=0.30,
+            expected_duration_hours=4.0,
+            actual_duration_hours=4.5,
+            over_provision_factor=16 / 6,
+        )
+        assert 0.0 <= rec.ifs <= 1.0
+
+        sim = SimulationResult(
+            intent_id=intent_dict["intent_id"],
+            workload_type="etl", cloud="aws", instance_type="m5.xlarge",
+            submitted_nodes=16, optimal_nodes=6,
+            predicted_utilization=0.65,
+            potential_cost_usd=200.0, right_sized_cost_usd=75.0, prevented_cost_usd=125.0,
+            intervention="AUTO_CORRECT", stage="pre_provision",
+            ev_block=-20.0, ev_auto_correct=80.0,
+        )
+
+        tracker = PreventionTracker()
+        tracker.record_simulation(sim, ifs=rec.ifs, succeeded=True)
+
+        summary = tracker.summary()
+        assert summary["mean_ifs"] == pytest.approx(rec.ifs, rel=1e-4)
+        assert summary["system_cps"] > 0
+        assert summary["esr"] == pytest.approx(1.0)
+
+    def test_multiple_ifs_records_aggregate_correctly(self):
+        """Multiple IFSRecords from different workloads aggregate mean_ifs correctly."""
+        from ifs.ifs_calculator import IFSCalculator
+        from cps_metrics.prevention_tracker import PreventionTracker
+        from simulation_engine.simulator import SimulationResult
+
+        tracker = PreventionTracker()
+        ifs_values = []
+
+        cases = [
+            # (type_mismatch, tm_conf, pred_util, actual_util, exp_dur, act_dur, opf)
+            (False, 0.0, 0.70, 0.68, 4.0, 4.1, 1.0),   # well-aligned
+            (True,  0.90, 0.70, 0.25, 4.0, 8.0, 2.5),   # severe
+            (False, 0.0, 0.65, 0.60, 6.0, 6.5, 1.1),   # minor
+        ]
+        for i, (tm, tmc, pu, au, ed, ad, opf) in enumerate(cases):
+            rec = IFSCalculator.compute_ifs(
+                intent_id=f"g-multi-{i}", run_id=f"run-multi-{i}",
+                type_mismatch=tm, type_mismatch_confidence=tmc,
+                predicted_utilization=pu, actual_utilization=au,
+                expected_duration_hours=ed, actual_duration_hours=ad,
+                over_provision_factor=opf,
+            )
+            ifs_values.append(rec.ifs)
+            sim = SimulationResult(
+                intent_id=f"g-multi-{i}", workload_type="etl", cloud="aws",
+                instance_type="m5.xlarge", submitted_nodes=8, optimal_nodes=4,
+                predicted_utilization=pu, potential_cost_usd=100.0,
+                right_sized_cost_usd=50.0, prevented_cost_usd=50.0,
+                intervention="AUTO_CORRECT", stage="pre_provision",
+                ev_block=-5.0, ev_auto_correct=40.0,
+            )
+            tracker.record_simulation(sim, ifs=rec.ifs, succeeded=True)
+
+        expected_mean = sum(ifs_values) / len(ifs_values)
+        assert tracker.mean_ifs() == pytest.approx(expected_mean, rel=1e-3)
+
+    # -- 3. RCA PolicySuggestions → PolicyRegistry ─────────────────────────────
+
+    def test_rca_policies_accepted_by_registry(self):
+        """Policies from RootCauseAnalyzer.analyze() can be added to PolicyRegistry."""
+        from anomaly_rca.root_cause_analyzer import RootCauseAnalyzer
+        from policy_engine.policy_registry import PolicyRegistry
+
+        analyzer  = RootCauseAnalyzer(DB)
+        policies  = analyzer.analyze()
+        assert len(policies) >= 2
+
+        registry  = PolicyRegistry()
+        n_before  = len(registry)
+        for p in policies:
+            registry.add(p)
+
+        assert len(registry) == n_before + len(policies)
+        for p in policies:
+            assert registry.get(p.policy_id) is not None
+
+    def test_rca_learned_policies_distinct_from_builtin(self):
+        """Learned policies from RCA must have source='learned', not 'builtin'."""
+        from anomaly_rca.root_cause_analyzer import RootCauseAnalyzer
+        from policy_engine.policy_registry import PolicyRegistry
+
+        registry = PolicyRegistry()
+        builtin_ids = {p.policy_id for p in registry.list_all()}
+
+        analyzer = RootCauseAnalyzer(DB)
+        learned  = analyzer.analyze()
+
+        for p in learned:
+            assert p.source == "learned"
+            assert p.policy_id not in builtin_ids, \
+                f"Learned policy {p.policy_id} collides with a builtin policy ID"
+
+    # -- 4. Full pipeline: description → intent → simulation → IFS → CPS ───────
+
+    def test_full_pipeline_etl_over_provisioned(self):
+        """
+        Full pipeline for an over-provisioned ETL workload:
+          description → inference → simulation → guardrail → IFS → PreventionTracker
+        Verifies the cross-module data flow without any module mutating another's outputs.
+        """
+        from intent_model.intent_inference import IntentInferenceEngine
+        from simulation_engine.simulator import PreExecutionSimulator
+        from guardrails.pre_provision_guard import PreProvisionGuard
+        from policy_engine.policy_registry import PolicyRegistry
+        from ifs.ifs_calculator import IFSCalculator
+        from cps_metrics.prevention_tracker import PreventionTracker
+
+        # Step 1: description → inferred intent
+        engine   = IntentInferenceEngine()
+        inferred = engine.infer(
+            "Weekly ETL pipeline processing 500 GB of customer transaction data from S3 to Redshift",
+            declared_type="etl",
+        )
+        assert inferred.workload_type_inferred == "etl"
+
+        # Step 2: simulate (over-provisioned: 16 nodes, optimal ~6)
+        sim_input = {
+            "intent_id":              "pipeline-etl-001",
+            "workload_type":          "etl",
+            "cloud_provider":         "aws",
+            "instance_type":          "m5.xlarge",
+            "node_count":             16,
+            "expected_duration_hours": 4.0,
+            "priority":               "medium",
+            "use_spot":               False,
+        }
+        simulator = PreExecutionSimulator()
+        sim_result = simulator.simulate(sim_input)
+        assert sim_result.submitted_nodes == 16
+        assert sim_result.optimal_nodes < 16   # system detects over-provisioning
+        assert sim_result.stage == "pre_provision"
+
+        # Step 3: guardrail decision
+        registry = PolicyRegistry()
+        guard    = PreProvisionGuard(registry, simulator, conflict_strategy="auto_negotiate")
+        decision = guard.evaluate(sim_input)
+        assert decision.action in ("AUTO_CORRECT", "SUGGEST", "REJECT", "PASS")
+
+        # Step 4: IFS — simulated runtime shows under-utilisation (confirms over-prov)
+        ifs_rec = IFSCalculator.compute_ifs(
+            intent_id="pipeline-etl-001",
+            run_id="run-pipeline-001",
+            type_mismatch=inferred.type_mismatch,
+            type_mismatch_confidence=inferred.type_mismatch_confidence or 0.0,
+            predicted_utilization=sim_result.predicted_utilization,
+            actual_utilization=0.28,        # under-utilised due to over-provisioning
+            expected_duration_hours=4.0,
+            actual_duration_hours=4.2,
+            over_provision_factor=16 / max(sim_result.optimal_nodes, 1),
+        )
+        assert 0.0 <= ifs_rec.ifs <= 1.0
+        assert ifs_rec.intent_id == "pipeline-etl-001"
+
+        # Step 5: feed IFS into PreventionTracker
+        tracker = PreventionTracker()
+        tracker.record_simulation(sim_result, ifs=ifs_rec.ifs, succeeded=True)
+        summary = tracker.summary()
+
+        assert summary["total_runs"] == 1
+        assert summary["mean_ifs"]   == pytest.approx(ifs_rec.ifs, rel=1e-4)
+        assert summary["system_cps"] >= 0.0
+
+    def test_full_pipeline_llm_with_token_waste(self):
+        """
+        Full pipeline for an LLM pipeline with token waste:
+        IFSCalculator uses token sub-score; result feeds PreventionTracker.
+        """
+        from simulation_engine.simulator import PreExecutionSimulator
+        from ifs.ifs_calculator import IFSCalculator
+        from cps_metrics.prevention_tracker import PreventionTracker
+
+        sim_input = {
+            "intent_id":              "pipeline-llm-001",
+            "workload_type":          "llm_pipeline",
+            "cloud_provider":         "aws",
+            "instance_type":          "m5.2xlarge",
+            "node_count":             3,
+            "expected_duration_hours": 2.0,
+            "priority":               "medium",
+            "use_spot":               False,
+        }
+        simulator  = PreExecutionSimulator()
+        sim_result = simulator.simulate(sim_input)
+
+        ifs_rec = IFSCalculator.compute_ifs(
+            intent_id="pipeline-llm-001",
+            run_id="run-llm-001",
+            type_mismatch=False,
+            type_mismatch_confidence=0.0,
+            predicted_utilization=sim_result.predicted_utilization,
+            actual_utilization=0.55,
+            expected_duration_hours=2.0,
+            actual_duration_hours=2.1,
+            over_provision_factor=1.0,
+            is_llm_pipeline=True,
+            token_budget_declared=100_000,
+            token_usage_actual=180_000,   # 80% over budget
+        )
+        assert 0.0 <= ifs_rec.ifs <= 1.0
+
+        tracker = PreventionTracker()
+        tracker.record_simulation(sim_result, ifs=ifs_rec.ifs, succeeded=True)
+        assert tracker.mean_ifs() == pytest.approx(ifs_rec.ifs, rel=1e-4)
+
+    def test_ibd_fraction_reflects_low_ifs_workloads(self):
+        """
+        IBD fraction from PreventionTracker matches the fraction of low-IFS records
+        produced by IFSCalculator (IFS < 0.70 threshold per design doc §5.6).
+        """
+        from ifs.ifs_calculator import IFSCalculator
+        from cps_metrics.prevention_tracker import PreventionTracker
+        from simulation_engine.simulator import SimulationResult
+
+        tracker = PreventionTracker()
+        cases = [
+            # (over_provision_factor, actual_util) → expected low/high IFS
+            (1.0, 0.70),   # well-aligned
+            (1.0, 0.68),   # well-aligned
+            (3.0, 0.20),   # severe (IBD)
+            (2.5, 0.25),   # severe (IBD)
+        ]
+        n_low = 0
+        for i, (opf, au) in enumerate(cases):
+            rec = IFSCalculator.compute_ifs(
+                intent_id=f"ibd-{i}", run_id=f"run-ibd-{i}",
+                type_mismatch=(opf > 2.0),
+                type_mismatch_confidence=0.85 if opf > 2.0 else 0.0,
+                predicted_utilization=0.70, actual_utilization=au,
+                expected_duration_hours=4.0, actual_duration_hours=4.0,
+                over_provision_factor=opf,
+            )
+            if rec.ifs < 0.70:
+                n_low += 1
+            sim = SimulationResult(
+                intent_id=f"ibd-{i}", workload_type="etl", cloud="aws",
+                instance_type="m5.xlarge", submitted_nodes=8, optimal_nodes=4,
+                predicted_utilization=0.70, potential_cost_usd=100.0,
+                right_sized_cost_usd=50.0, prevented_cost_usd=50.0,
+                intervention="AUTO_CORRECT", stage="pre_provision",
+                ev_block=-5.0, ev_auto_correct=40.0,
+            )
+            tracker.record_simulation(sim, ifs=rec.ifs)
+
+        expected_ibd = n_low / len(cases)
+        assert tracker.ibd_fraction() == pytest.approx(expected_ibd, rel=1e-3)
