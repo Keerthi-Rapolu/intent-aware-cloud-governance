@@ -14,8 +14,10 @@ from components.data_loader import (
     load_ibd_mismatch_subgroup,
 )
 from components.charts import confusion_matrix_heatmap
+from components.sidebar import render as render_sidebar
 
 st.set_page_config(page_title="Prevention Engine — PBCP", layout="wide")
+render_sidebar()
 st.title("Prevention Engine")
 st.markdown(
     "This is where PBCP earns its keep — type in a workload description and watch it "

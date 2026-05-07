@@ -12,8 +12,10 @@ from components.data_loader import (
 from components.charts import (
     cps_by_stage_bar, cps_by_type_bar, ifs_histogram, ifs_category_donut,
 )
+from components.sidebar import render as render_sidebar
 
 st.set_page_config(page_title="Runtime & Savings — PBCP", layout="wide")
+render_sidebar()
 st.title("Runtime & Savings")
 st.markdown(
     "How much did PBCP save, and did the workloads keep their promises? "

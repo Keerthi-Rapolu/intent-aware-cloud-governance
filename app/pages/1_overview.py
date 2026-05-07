@@ -6,8 +6,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
 from components.data_loader import load_kpis
+from components.sidebar import render as render_sidebar
 
 st.set_page_config(page_title="Overview — PBCP", layout="wide")
+render_sidebar()
 
 # Research identity bar
 st.markdown("""

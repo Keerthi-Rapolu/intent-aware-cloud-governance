@@ -15,10 +15,12 @@ from components.data_loader import (
     load_ifs_distribution,
 )
 from components.charts import convergence_line
+from components.sidebar import render as render_sidebar
 
 _BG, _BG2, _GRID, _TEXT = "#FAFAF8", "#FFFFFF", "rgba(0,0,0,0.05)", "#6B7280"
 
 st.set_page_config(page_title="Learning System — PBCP", layout="wide")
+render_sidebar()
 st.title("Learning System")
 st.markdown(
     "PBCP doesn't just react — it gets smarter over time. "
