@@ -16,10 +16,8 @@ from components.charts import (
 st.set_page_config(page_title="Runtime & Savings — PBCP", layout="wide")
 st.title("Runtime & Savings")
 st.markdown(
-    "The scorecard page — see exactly how much money PBCP prevented from being wasted "
-    "and how well each workload's actual runtime matched its declared intent. "
-    "CPS measures cost saved; **IFS (Intent-Fit Score)**, designed by Sreeja, measures "
-    "whether what the job *did* matched what it *said* it would do."
+    "How much did PBCP save, and did the workloads keep their promises? "
+    "CPS tracks the money; **IFS (Intent-Fit Score)**, Sreeja's metric, tracks whether each job's runtime matched its declared intent."
 )
 st.caption(
     "Cost prevention and alignment metrics across the controlled evaluation benchmark · "
