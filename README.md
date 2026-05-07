@@ -169,8 +169,9 @@ Workload mix: ETL 130 · Adhoc 95 · ML Training 98 · LLM Pipeline 50 · Batch 
 
 - **Keerthi Rapolu** — First Author; system architecture, intent inference, pre-execution simulation, EV intervention model, runtime optimizer, CPS/ESR evaluation, Streamlit research demo.
   Modules: `intent_model/` · `simulation_engine/` · `policy_engine/` · `runtime_optimizer/` · `cps_metrics/` · `app/`
-- **Sreeja Katta** — Second Author; Intent-Fit Score subsystem, anomaly RCA contributions, policy feedback loop support.
-  Modules: `ifs/` · `anomaly_rca/`
+
+- **Sreeja Katta** — Second Author; Intent-Fit Score (IFS) subsystem and formula design, IBD detection experiment (Exp 3) comparing IFS-based vs CPU-threshold anomaly detectors, anomaly root cause analyzer, prevention feedback loop (`AnomalyPreventionFeedback`) that auto-generates learned policies from recurring failure patterns, Streamlit dashboard pages for anomaly detection and the learning system.
+  Modules: `ifs/` · `anomaly_rca/` · `experiments/exp3_ibd_detection.py` · `visualization/exp3_ibd_chart.py` · `tables/table3_ibd.py`
 
 ## Citation
 
