@@ -172,351 +172,346 @@ with tab_demo:
             margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
         )
         st.plotly_chart(eg_fig, use_container_width=True)
-        st.stop()
 
-    # ── Preset buttons ────────────────────────────────────────────────────────
-    PRESETS = {
-        "High Impact — ML Training": (
-            "Weekly customer churn model retraining on 3 TB Spark ML dataset "
-            "with PII records — hyperparameter search, XGBoost, distributed training",
-            "ml_training", 32,
-        ),
-        "Moderate — Nightly ETL": (
-            "Nightly billing reconciliation ETL on 500 GB Parquet files from S3 "
-            "into Redshift — includes PII customer payment records, scheduled 02:00 UTC",
-            "etl", 16,
-        ),
-        "Well-Aligned — Streaming": (
-            "Real-time fraud monitoring Kafka stream with tumbling 60-second windows "
-            "— continuous processing of live payment events, autoscaling enabled",
-            "streaming", 6,
-        ),
-        "LLM Pipeline": (
-            "Batch RAG pipeline for customer support summarization — embedding "
-            "500K documents into FAISS vector store via OpenAI API completions",
-            "llm_pipeline", 12,
-        ),
-        "Adhoc Analytics": (
-            "One-off exploratory analysis of Q2 marketing campaign performance "
-            "across customer segments — ad-hoc query on 200 GB transaction data",
-            "adhoc", 10,
-        ),
-    }
-
-    if "demo_desc" not in st.session_state:
-        st.session_state.demo_desc = (
-            "Weekly customer churn model retraining on 3 TB Spark ML dataset "
-            "with PII records — hyperparameter search, XGBoost, distributed training"
-        )
-    if "demo_type" not in st.session_state:
-        st.session_state.demo_type = "ml_training"
-    if "demo_nodes" not in st.session_state:
-        st.session_state.demo_nodes = 32
-
-    st.markdown("**Quick-start presets:**")
-    pcols = st.columns(len(PRESETS))
-    for col, (label, (desc, wtype, node_default)) in zip(pcols, PRESETS.items()):
-        if col.button(label, key=f"preset_{label}", use_container_width=True):
-            st.session_state.demo_desc  = desc
-            st.session_state.demo_type  = wtype
-            st.session_state.demo_nodes = node_default
-
-    # ── Input form ────────────────────────────────────────────────────────────
-    col_in, col_cfg = st.columns([2, 1])
-
-    with col_in:
-        description = st.text_area(
-            "Workload description",
-            value=st.session_state.demo_desc,
-            height=120,
-            placeholder=(
-                "e.g., weekly customer churn model retraining on 3 TB dataset "
-                "with PII — Spark ML, XGBoost"
+    if _PIPELINE_AVAILABLE:
+        # ── Preset buttons ────────────────────────────────────────────────────
+        PRESETS = {
+            "High Impact — ML Training": (
+                "Weekly customer churn model retraining on 3 TB Spark ML dataset "
+                "with PII records — hyperparameter search, XGBoost, distributed training",
+                "ml_training", 32,
             ),
-        )
+            "Moderate — Nightly ETL": (
+                "Nightly billing reconciliation ETL on 500 GB Parquet files from S3 "
+                "into Redshift — includes PII customer payment records, scheduled 02:00 UTC",
+                "etl", 16,
+            ),
+            "Well-Aligned — Streaming": (
+                "Real-time fraud monitoring Kafka stream with tumbling 60-second windows "
+                "— continuous processing of live payment events, autoscaling enabled",
+                "streaming", 6,
+            ),
+            "LLM Pipeline": (
+                "Batch RAG pipeline for customer support summarization — embedding "
+                "500K documents into FAISS vector store via OpenAI API completions",
+                "llm_pipeline", 12,
+            ),
+            "Adhoc Analytics": (
+                "One-off exploratory analysis of Q2 marketing campaign performance "
+                "across customer segments — ad-hoc query on 200 GB transaction data",
+                "adhoc", 10,
+            ),
+        }
 
-    type_options = ["etl", "adhoc", "ml_training", "llm_pipeline", "batch", "streaming"]
-    default_idx  = (type_options.index(st.session_state.demo_type)
-                    if st.session_state.demo_type in type_options else 2)
-
-    with col_cfg:
-        declared_type = st.selectbox("Declared workload type", type_options, index=default_idx)
-        cloud    = st.selectbox("Cloud provider", ["aws", "azure", "gcp"])
-        instance = st.selectbox(
-            "Instance type",
-            ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "p3.2xlarge",
-             "r5.xlarge", "c5.xlarge"],
-        )
-        nodes    = st.slider("Node count",     min_value=1,   max_value=50,
-                             value=st.session_state.demo_nodes)
-        duration = st.slider("Expected hours", min_value=0.5, max_value=24.0,
-                             value=8.0, step=0.5)
-        priority = st.selectbox("Priority", ["low", "medium", "high", "critical"], index=1)
-        use_spot = st.checkbox("Use spot instances", value=False)
-
-    run_btn = st.button("Simulate", type="primary")
-
-    if not run_btn:
-        st.info("Fill in the fields above and click **Simulate**.")
-        st.stop()
-
-    if not description.strip():
-        st.warning("Enter a workload description to run the simulation.")
-        st.stop()
-
-    # ── Run pipeline ──────────────────────────────────────────────────────────
-    with st.spinner("Running PBCP pipeline..."):
-        try:
-            from simulation_engine.simulator import PreExecutionSimulator
-            from ifs.ifs_calculator import IFSCalculator
-            from simulation_engine.cost_model import CloudCostModel
-
-            engine   = IntentInferenceEngine()
-            inferred = engine.infer(description, declared_type=declared_type)
-
-            intent_dict = {
-                "intent_id":               "live-demo",
-                "workload_type":           declared_type,
-                "cloud_provider":          cloud,
-                "instance_type":           instance,
-                "node_count":              nodes,
-                "use_spot":                use_spot,
-                "priority":                priority,
-                "expected_duration_hours": duration,
-            }
-            simulator   = PreExecutionSimulator()
-            sim         = simulator.simulate(intent_dict)
-            cost_model  = CloudCostModel()
-            static_cost = cost_model.compute_cost(cloud, instance, nodes, duration, use_spot)
-
-            typical_actual = sim.predicted_utilization * 0.90
-            ifs_rec = IFSCalculator.compute_ifs(
-                intent_id="live-demo", run_id="demo",
-                type_mismatch=inferred.type_mismatch,
-                type_mismatch_confidence=inferred.type_mismatch_confidence or 0.0,
-                predicted_utilization=sim.predicted_utilization,
-                actual_utilization=typical_actual,
-                expected_duration_hours=duration,
-                actual_duration_hours=duration,
-                over_provision_factor=nodes / max(sim.optimal_nodes, 1),
+        if "demo_desc" not in st.session_state:
+            st.session_state.demo_desc = (
+                "Weekly customer churn model retraining on 3 TB Spark ML dataset "
+                "with PII records — hyperparameter search, XGBoost, distributed training"
             )
-            ok = True
-        except Exception as exc:
-            st.error(f"Pipeline error: {exc}")
-            import traceback; traceback.print_exc()
-            ok = False
+        if "demo_type" not in st.session_state:
+            st.session_state.demo_type = "ml_training"
+        if "demo_nodes" not in st.session_state:
+            st.session_state.demo_nodes = 32
 
-    if not ok:
-        st.stop()
+        st.markdown("**Quick-start presets:**")
+        pcols = st.columns(len(PRESETS))
+        for col, (label, (desc, wtype, node_default)) in zip(pcols, PRESETS.items()):
+            if col.button(label, key=f"preset_{label}", use_container_width=True):
+                st.session_state.demo_desc  = desc
+                st.session_state.demo_type  = wtype
+                st.session_state.demo_nodes = node_default
 
-    # ── Results ───────────────────────────────────────────────────────────────
-    st.divider()
-    color = INT_COLOR_MAP.get(sim.intervention, "#94A3B8")
+        # ── Input form ────────────────────────────────────────────────────────
+        col_in, col_cfg = st.columns([2, 1])
 
-    if sim.intervention == "AUTO_CORRECT":
-        st.success(
-            f"AUTO_CORRECT — nodes reduced {nodes} → {sim.optimal_nodes} "
-            f"| cost prevented ${sim.prevented_cost_usd:.2f} | CPS {sim.cps:.3f}"
-        )
-    elif sim.intervention == "BLOCK":
-        st.error(
-            f"BLOCK — submission rejected | potential waste ${sim.prevented_cost_usd:.2f}"
-        )
-    elif sim.intervention == "SUGGEST":
-        st.warning(
-            f"SUGGEST — predicted utilization ({sim.predicted_utilization:.0%}) indicates "
-            f"{sim.optimal_nodes} nodes would suffice vs {nodes} submitted. "
-            f"EV model favors suggestion over forced correction "
-            f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
-        )
-    else:
-        if inferred.type_mismatch:
-            st.info(
-                f"PASS — workload type divergence detected "
-                f"(declared: {declared_type}, inferred: {inferred.workload_type_inferred}), "
-                f"but EV model determines correction cost exceeds expected waste "
-                f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
+        with col_in:
+            description = st.text_area(
+                "Workload description",
+                value=st.session_state.demo_desc,
+                height=120,
+                placeholder=(
+                    "e.g., weekly customer churn model retraining on 3 TB dataset "
+                    "with PII — Spark ML, XGBoost"
+                ),
             )
+
+        type_options = ["etl", "adhoc", "ml_training", "llm_pipeline", "batch", "streaming"]
+        default_idx  = (type_options.index(st.session_state.demo_type)
+                        if st.session_state.demo_type in type_options else 2)
+
+        with col_cfg:
+            declared_type = st.selectbox("Declared workload type", type_options, index=default_idx)
+            cloud    = st.selectbox("Cloud provider", ["aws", "azure", "gcp"])
+            instance = st.selectbox(
+                "Instance type",
+                ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "p3.2xlarge",
+                 "r5.xlarge", "c5.xlarge"],
+            )
+            nodes    = st.slider("Node count",     min_value=1,   max_value=50,
+                                 value=st.session_state.demo_nodes)
+            duration = st.slider("Expected hours", min_value=0.5, max_value=24.0,
+                                 value=8.0, step=0.5)
+            priority = st.selectbox("Priority", ["low", "medium", "high", "critical"], index=1)
+            use_spot = st.checkbox("Use spot instances", value=False)
+
+        run_btn = st.button("Simulate", type="primary")
+
+        if not run_btn:
+            st.info("Fill in the fields above and click **Simulate**.")
+        elif not description.strip():
+            st.warning("Enter a workload description to run the simulation.")
         else:
-            st.info("PASS — no intervention required (utilization healthy, no type mismatch)")
+            # ── Run pipeline ──────────────────────────────────────────────────
+            with st.spinner("Running PBCP pipeline..."):
+                try:
+                    from simulation_engine.simulator import PreExecutionSimulator
+                    from ifs.ifs_calculator import IFSCalculator
+                    from simulation_engine.cost_model import CloudCostModel
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Intervention",   sim.intervention)
-    c2.metric("Optimal nodes",  f"{sim.optimal_nodes} / {nodes} submitted")
-    c3.metric("Cost prevented", f"${sim.prevented_cost_usd:.2f}")
-    c4.metric("CPS",            f"{sim.cps:.3f}")
+                    engine   = IntentInferenceEngine()
+                    inferred = engine.infer(description, declared_type=declared_type)
 
-    # Before / After cards
-    st.divider()
-    col_before, col_after = st.columns(2)
-    with col_before:
-        st.markdown("""
+                    intent_dict = {
+                        "intent_id":               "live-demo",
+                        "workload_type":           declared_type,
+                        "cloud_provider":          cloud,
+                        "instance_type":           instance,
+                        "node_count":              nodes,
+                        "use_spot":                use_spot,
+                        "priority":                priority,
+                        "expected_duration_hours": duration,
+                    }
+                    simulator   = PreExecutionSimulator()
+                    sim         = simulator.simulate(intent_dict)
+                    cost_model  = CloudCostModel()
+                    static_cost = cost_model.compute_cost(cloud, instance, nodes, duration, use_spot)
+
+                    typical_actual = sim.predicted_utilization * 0.90
+                    ifs_rec = IFSCalculator.compute_ifs(
+                        intent_id="live-demo", run_id="demo",
+                        type_mismatch=inferred.type_mismatch,
+                        type_mismatch_confidence=inferred.type_mismatch_confidence or 0.0,
+                        predicted_utilization=sim.predicted_utilization,
+                        actual_utilization=typical_actual,
+                        expected_duration_hours=duration,
+                        actual_duration_hours=duration,
+                        over_provision_factor=nodes / max(sim.optimal_nodes, 1),
+                    )
+                    ok = True
+                except Exception as exc:
+                    st.error(f"Pipeline error: {exc}")
+                    import traceback; traceback.print_exc()
+                    ok = False
+
+            if ok:
+                # ── Results ───────────────────────────────────────────────────
+                st.divider()
+                color = INT_COLOR_MAP.get(sim.intervention, "#94A3B8")
+
+                if sim.intervention == "AUTO_CORRECT":
+                    st.success(
+                        f"AUTO_CORRECT — nodes reduced {nodes} → {sim.optimal_nodes} "
+                        f"| cost prevented ${sim.prevented_cost_usd:.2f} | CPS {sim.cps:.3f}"
+                    )
+                elif sim.intervention == "BLOCK":
+                    st.error(
+                        f"BLOCK — submission rejected | potential waste ${sim.prevented_cost_usd:.2f}"
+                    )
+                elif sim.intervention == "SUGGEST":
+                    st.warning(
+                        f"SUGGEST — predicted utilization ({sim.predicted_utilization:.0%}) indicates "
+                        f"{sim.optimal_nodes} nodes would suffice vs {nodes} submitted. "
+                        f"EV model favors suggestion over forced correction "
+                        f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
+                    )
+                else:
+                    if inferred.type_mismatch:
+                        st.info(
+                            f"PASS — workload type divergence detected "
+                            f"(declared: {declared_type}, inferred: {inferred.workload_type_inferred}), "
+                            f"but EV model determines correction cost exceeds expected waste "
+                            f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
+                        )
+                    else:
+                        st.info("PASS — no intervention required (utilization healthy, no type mismatch)")
+
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Intervention",   sim.intervention)
+                c2.metric("Optimal nodes",  f"{sim.optimal_nodes} / {nodes} submitted")
+                c3.metric("Cost prevented", f"${sim.prevented_cost_usd:.2f}")
+                c4.metric("CPS",            f"{sim.cps:.3f}")
+
+                # Before / After cards
+                st.divider()
+                col_before, col_after = st.columns(2)
+                with col_before:
+                    st.markdown("""
 <div style="font-size:11px; font-weight:700; letter-spacing:0.08em;
             text-transform:uppercase; color:#475569; margin-bottom:8px;">
 As Submitted
 </div>""", unsafe_allow_html=True)
-        st.metric("Node count",        nodes)
-        st.metric("Projected cost",    f"${static_cost:.2f}",
-                  help="Cost at submitted configuration, unmodified")
+                    st.metric("Node count",        nodes)
+                    st.metric("Projected cost",    f"${static_cost:.2f}",
+                              help="Cost at submitted configuration, unmodified")
 
-    with col_after:
-        st.markdown(f"""
+                with col_after:
+                    st.markdown(f"""
 <div style="font-size:11px; font-weight:700; letter-spacing:0.08em;
             text-transform:uppercase; color:{color}; margin-bottom:8px;">
 After PBCP Intervention
 </div>""", unsafe_allow_html=True)
-        st.metric("Optimal nodes",    sim.optimal_nodes,
-                  delta=f"{sim.optimal_nodes - nodes:+d} node adjustment")
-        st.metric("Right-sized cost", f"${sim.right_sized_cost_usd:.2f}",
-                  delta=f"-${sim.prevented_cost_usd:.2f}", delta_color="inverse")
+                    st.metric("Optimal nodes",    sim.optimal_nodes,
+                              delta=f"{sim.optimal_nodes - nodes:+d} node adjustment")
+                    st.metric("Right-sized cost", f"${sim.right_sized_cost_usd:.2f}",
+                              delta=f"-${sim.prevented_cost_usd:.2f}", delta_color="inverse")
 
-    st.divider()
-    col_l, col_r = st.columns(2)
+                st.divider()
+                col_l, col_r = st.columns(2)
 
-    with col_l:
-        st.subheader("Intent Inference")
-        st.json({
-            "declared_type":        declared_type,
-            "inferred_type":        inferred.workload_type_inferred,
-            "type_mismatch":        inferred.type_mismatch,
-            "mismatch_confidence":  inferred.type_mismatch_confidence,
-            "pii_signal":           inferred.pii_signal,
-            "recurrence":           inferred.recurrence_signal,
-            "data_volume":          inferred.data_volume_estimate,
-            "latency_sensitivity":  inferred.latency_sensitivity,
-            "inference_confidence": inferred.inference_confidence,
-        })
+                with col_l:
+                    st.subheader("Intent Inference")
+                    st.json({
+                        "declared_type":        declared_type,
+                        "inferred_type":        inferred.workload_type_inferred,
+                        "type_mismatch":        inferred.type_mismatch,
+                        "mismatch_confidence":  inferred.type_mismatch_confidence,
+                        "pii_signal":           inferred.pii_signal,
+                        "recurrence":           inferred.recurrence_signal,
+                        "data_volume":          inferred.data_volume_estimate,
+                        "latency_sensitivity":  inferred.latency_sensitivity,
+                        "inference_confidence": inferred.inference_confidence,
+                    })
 
-    with col_r:
-        st.subheader("Simulation Result")
-        st.json({
-            "predicted_utilization": sim.predicted_utilization,
-            "submitted_nodes":       sim.submitted_nodes,
-            "optimal_nodes":         sim.optimal_nodes,
-            "potential_cost_usd":    round(sim.potential_cost_usd, 4),
-            "right_sized_cost_usd":  round(sim.right_sized_cost_usd, 4),
-            "prevented_cost_usd":    round(sim.prevented_cost_usd, 4),
-            "intervention":          sim.intervention,
-            "ev_auto_correct":       sim.ev_auto_correct,
-            "ev_block":              sim.ev_block,
-        })
+                with col_r:
+                    st.subheader("Simulation Result")
+                    st.json({
+                        "predicted_utilization": sim.predicted_utilization,
+                        "submitted_nodes":       sim.submitted_nodes,
+                        "optimal_nodes":         sim.optimal_nodes,
+                        "potential_cost_usd":    round(sim.potential_cost_usd, 4),
+                        "right_sized_cost_usd":  round(sim.right_sized_cost_usd, 4),
+                        "prevented_cost_usd":    round(sim.prevented_cost_usd, 4),
+                        "intervention":          sim.intervention,
+                        "ev_auto_correct":       sim.ev_auto_correct,
+                        "ev_block":              sim.ev_block,
+                    })
 
-    # ── IFS gauge + sub-scores ────────────────────────────────────────────────
-    st.divider()
-    st.subheader("Intent-Fit Score (IFS)")
-    st.caption(
-        "Measures alignment between the workload's declared intent and its predicted "
-        "runtime behavior. Displayed sub-scores are interpretable components "
-        "contributing to the embedding-based IFS calculation. IFS < 0.65 triggers "
-        "the anomaly detector."
-    )
+                # ── IFS gauge + sub-scores ────────────────────────────────────
+                st.divider()
+                st.subheader("Intent-Fit Score (IFS)")
+                st.caption(
+                    "Measures alignment between the workload's declared intent and its predicted "
+                    "runtime behavior. Displayed sub-scores are interpretable components "
+                    "contributing to the embedding-based IFS calculation. IFS < 0.65 triggers "
+                    "the anomaly detector."
+                )
 
-    ifs_meta = {
-        "well_aligned": ("#15803D", "Well Aligned",
-                         "Predicted behavior aligns with declared intent."),
-        "minor":        ("#0891B2", "Minor Divergence",
-                         "Small gap between intent and predicted behavior."),
-        "significant":  ("#B45309", "Significant Divergence",
-                         "Noticeable divergence — warrants investigation."),
-        "severe":       ("#DC2626", "Severe Divergence",
-                         "Large divergence — workload is likely misconfigured."),
-    }
-    ifs_color, ifs_badge, verdict_msg = ifs_meta.get(
-        ifs_rec.ifs_category, ("#94A3B8", "Unknown", "")
-    )
+                ifs_meta = {
+                    "well_aligned": ("#15803D", "Well Aligned",
+                                     "Predicted behavior aligns with declared intent."),
+                    "minor":        ("#0891B2", "Minor Divergence",
+                                     "Small gap between intent and predicted behavior."),
+                    "significant":  ("#B45309", "Significant Divergence",
+                                     "Noticeable divergence — warrants investigation."),
+                    "severe":       ("#DC2626", "Severe Divergence",
+                                     "Large divergence — workload is likely misconfigured."),
+                }
+                ifs_color, ifs_badge, verdict_msg = ifs_meta.get(
+                    ifs_rec.ifs_category, ("#94A3B8", "Unknown", "")
+                )
 
-    gauge = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ifs_rec.ifs,
-        number={"font": {"size": 48, "color": ifs_color}, "valueformat": ".3f"},
-        gauge={
-            "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#334155",
-                     "tickfont": {"color": "#94A3B8"}},
-            "bar":  {"color": ifs_color, "thickness": 0.25},
-            "bgcolor": "#FAFAF8",
-            "borderwidth": 0,
-            "steps": [
-                {"range": [0.00, 0.50], "color": "rgba(242,139,130,0.18)"},
-                {"range": [0.50, 0.65], "color": "rgba(255,183,77,0.15)"},
-                {"range": [0.65, 0.85], "color": "rgba(123,191,219,0.12)"},
-                {"range": [0.85, 1.00], "color": "rgba(129,201,149,0.18)"},
-            ],
-            "threshold": {
-                "line": {"color": "#DC2626", "width": 2},
-                "thickness": 0.8, "value": 0.65,
-            },
-        },
-        title={"text": f"<b>{ifs_badge}</b>",
-               "font": {"size": 16, "color": ifs_color}},
-    ))
-    gauge.update_layout(height=260, paper_bgcolor="#FAFAF8", plot_bgcolor="#FAFAF8",
-                        font=dict(color=_TEXT, size=12),
-                        margin=dict(t=40, b=0, l=32, r=32))
+                gauge = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=ifs_rec.ifs,
+                    number={"font": {"size": 48, "color": ifs_color}, "valueformat": ".3f"},
+                    gauge={
+                        "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#334155",
+                                 "tickfont": {"color": "#94A3B8"}},
+                        "bar":  {"color": ifs_color, "thickness": 0.25},
+                        "bgcolor": "#FAFAF8",
+                        "borderwidth": 0,
+                        "steps": [
+                            {"range": [0.00, 0.50], "color": "rgba(242,139,130,0.18)"},
+                            {"range": [0.50, 0.65], "color": "rgba(255,183,77,0.15)"},
+                            {"range": [0.65, 0.85], "color": "rgba(123,191,219,0.12)"},
+                            {"range": [0.85, 1.00], "color": "rgba(129,201,149,0.18)"},
+                        ],
+                        "threshold": {
+                            "line": {"color": "#DC2626", "width": 2},
+                            "thickness": 0.8, "value": 0.65,
+                        },
+                    },
+                    title={"text": f"<b>{ifs_badge}</b>",
+                           "font": {"size": 16, "color": ifs_color}},
+                ))
+                gauge.update_layout(height=260, paper_bgcolor="#FAFAF8", plot_bgcolor="#FAFAF8",
+                                    font=dict(color=_TEXT, size=12),
+                                    margin=dict(t=40, b=0, l=32, r=32))
 
-    col_gauge, col_verdict = st.columns([1, 1])
-    with col_gauge:
-        st.plotly_chart(gauge, use_container_width=True)
+                col_gauge, col_verdict = st.columns([1, 1])
+                with col_gauge:
+                    st.plotly_chart(gauge, use_container_width=True)
 
-    with col_verdict:
-        st.markdown(f"### {ifs_badge}")
-        st.markdown(verdict_msg)
-        st.markdown(
-            f"**Score:** `{ifs_rec.ifs:.3f}` &nbsp;·&nbsp; "
-            f"**Category:** `{ifs_rec.ifs_category}`"
-        )
-        IBD_THRESHOLD = 0.65
-        if ifs_rec.ifs < IBD_THRESHOLD:
-            sub = {
-                "Job type mismatch":       ifs_rec.type_alignment,
-                "Utilisation mismatch":    ifs_rec.util_alignment,
-                "Duration mismatch":       ifs_rec.duration_alignment,
-                "Resource over-provision": ifs_rec.resource_alignment,
-            }
-            root_cause_label = min(sub, key=lambda k: sub[k])
-            st.error(
-                f"Anomaly detector would flag this workload.  \n"
-                f"IFS {ifs_rec.ifs:.3f} is below the alert threshold {IBD_THRESHOLD}.  \n"
-                f"Primary driver: **{root_cause_label}** "
-                f"(sub-score: {sub[root_cause_label]:.3f})"
-            )
-        else:
-            st.success(
-                f"Anomaly detector: no flag.  \n"
-                f"IFS {ifs_rec.ifs:.3f} is above the alert threshold {IBD_THRESHOLD}."
-            )
+                with col_verdict:
+                    st.markdown(f"### {ifs_badge}")
+                    st.markdown(verdict_msg)
+                    st.markdown(
+                        f"**Score:** `{ifs_rec.ifs:.3f}` &nbsp;·&nbsp; "
+                        f"**Category:** `{ifs_rec.ifs_category}`"
+                    )
+                    IBD_THRESHOLD = 0.65
+                    if ifs_rec.ifs < IBD_THRESHOLD:
+                        sub = {
+                            "Job type mismatch":       ifs_rec.type_alignment,
+                            "Utilisation mismatch":    ifs_rec.util_alignment,
+                            "Duration mismatch":       ifs_rec.duration_alignment,
+                            "Resource over-provision": ifs_rec.resource_alignment,
+                        }
+                        root_cause_label = min(sub, key=lambda k: sub[k])
+                        st.error(
+                            f"Anomaly detector would flag this workload.  \n"
+                            f"IFS {ifs_rec.ifs:.3f} is below the alert threshold {IBD_THRESHOLD}.  \n"
+                            f"Primary driver: **{root_cause_label}** "
+                            f"(sub-score: {sub[root_cause_label]:.3f})"
+                        )
+                    else:
+                        st.success(
+                            f"Anomaly detector: no flag.  \n"
+                            f"IFS {ifs_rec.ifs:.3f} is above the alert threshold {IBD_THRESHOLD}."
+                        )
 
-    st.markdown("#### Sub-score Breakdown")
-    st.caption(
-        "Interpretable components contributing to the embedding-based IFS. "
-        "Red = primary divergence driver."
-    )
-    sub_scores = {
-        "Job Type\nAlignment":    ifs_rec.type_alignment,
-        "Utilisation\nAlignment": ifs_rec.util_alignment,
-        "Duration\nAlignment":    ifs_rec.duration_alignment,
-        "Resource\nAlignment":    ifs_rec.resource_alignment,
-    }
-    bar_colors = ["#F28B82" if v < 0.50 else "#FFB74D" if v < 0.70 else "#81C995"
-                  for v in sub_scores.values()]
-    bar_fig = go.Figure(go.Bar(
-        x=list(sub_scores.keys()), y=list(sub_scores.values()),
-        marker_color=bar_colors, opacity=0.85,
-        text=[f"{v:.3f}" for v in sub_scores.values()],
-        textposition="outside",
-    ))
-    bar_fig.add_hline(y=0.65, line_dash="dash", line_color="#DC2626", line_width=1.5,
-                      annotation_text="Alert threshold (0.65)",
-                      annotation_position="top right",
-                      annotation_font_color="#DC2626")
-    bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
-    bar_fig.update_layout(
-        yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
-                   title_font=dict(size=12, color=_TEXT)),
-        paper_bgcolor=_BG, plot_bgcolor=_BG2,
-        font=dict(color=_TEXT, size=12),
-        margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
-    )
-    st.plotly_chart(bar_fig, use_container_width=True)
+                st.markdown("#### Sub-score Breakdown")
+                st.caption(
+                    "Interpretable components contributing to the embedding-based IFS. "
+                    "Red = primary divergence driver."
+                )
+                sub_scores = {
+                    "Job Type\nAlignment":    ifs_rec.type_alignment,
+                    "Utilisation\nAlignment": ifs_rec.util_alignment,
+                    "Duration\nAlignment":    ifs_rec.duration_alignment,
+                    "Resource\nAlignment":    ifs_rec.resource_alignment,
+                }
+                bar_colors = ["#F28B82" if v < 0.50 else "#FFB74D" if v < 0.70 else "#81C995"
+                              for v in sub_scores.values()]
+                bar_fig = go.Figure(go.Bar(
+                    x=list(sub_scores.keys()), y=list(sub_scores.values()),
+                    marker_color=bar_colors, opacity=0.85,
+                    text=[f"{v:.3f}" for v in sub_scores.values()],
+                    textposition="outside",
+                ))
+                bar_fig.add_hline(y=0.65, line_dash="dash", line_color="#DC2626", line_width=1.5,
+                                  annotation_text="Alert threshold (0.65)",
+                                  annotation_position="top right",
+                                  annotation_font_color="#DC2626")
+                bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
+                bar_fig.update_layout(
+                    yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
+                               title_font=dict(size=12, color=_TEXT)),
+                    paper_bgcolor=_BG, plot_bgcolor=_BG2,
+                    font=dict(color=_TEXT, size=12),
+                    margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
+                )
+                st.plotly_chart(bar_fig, use_container_width=True)
 
 
 # ============================================================
