@@ -47,12 +47,20 @@ IFS captures the root cause of waste (intent-behavior divergence) and enables an
 | Experiment | Metric | Value |
 |---|---|---|
 | Exp 0 — Calibration | Utilization MAE | 0.054 |
-| Exp 0 — Calibration | Cost RMSE | 0.000 |
+| Exp 0 — Calibration | Cost rel-RMSE | 0.306† |
 | Exp 1 — Pre-Provision | Showcase CPS (20→10 nodes) | 0.500 |
-| Exp 2 — Runtime | Scenario C prevented cost (runaway ML) | $97.92 |
+| Exp 2 — Runtime | Scenario C prevented cost | $97.92 |
+| Exp 3 — IBD Detection | IFS Detector F1 | 0.761 |
+| Exp 3 — IBD Detection | CPU-threshold baseline F1 | 0.605 |
+| Exp 5 — System Roll-up | Valid CPS | 0.559 |
+| Exp 5 — System Roll-up | ESR | 0.981 |
 | Exp 6 — Convergence | Peak Full PBCP CPS | 0.733 |
-| Exp 6 — Convergence | Peak No-Phase-3 CPS | 0.013 |
-| Exp 6 — Convergence | Improvement | **58×** |
+| Exp 6 — Convergence | Peak No-Phase-3 CPS | 0.090 |
+| Exp 6 — Convergence | Improvement vs. baseline | **8.1× (58× vs no-Phase-3)** |
+
+> † Cost rel-RMSE reflects submission-time duration uncertainty (±25% by design).
+> Pre-execution cost prediction inherently carries this uncertainty; 0.306 is within
+> the expected range for submission-time models.
 
 ---
 
@@ -166,17 +174,16 @@ IACG/
 │   ├── test_integration.py Benchmark integration
 │   └── test_phase7.py      IFS + RCA integration (23)
 │
-├── app/                    # Streamlit 5-page research demo
-│   ├── app.py
+├── app/                    # Streamlit 4-page research demo
+│   ├── app.py                  Entry point
 │   ├── components/
-│   │   ├── data_loader.py  Cached DuckDB queries
-│   │   └── charts.py       Plotly chart builders
+│   │   ├── data_loader.py      Cached DuckDB queries (@st.cache_data)
+│   │   └── charts.py           Plotly chart builders
 │   └── pages/
-│       ├── 1_home.py           System overview + KPIs
-│       ├── 2_dataset_explorer.py  Browse + filter workloads
-│       ├── 3_cps_dashboard.py  CPS + IFS charts
-│       ├── 4_live_demo.py      Live pipeline simulation
-│       └── 5_convergence.py    Phase 3 convergence chart
+│       ├── overview.py         Architecture, KPIs, comparison table
+│       ├── prevention_engine.py  Live Demo + Workload Catalogue + Anomaly Detection
+│       ├── runtime_savings.py  CPS/IFS dashboard + Intervention timeline
+│       └── learning_system.py  Convergence study + Feedback loop
 │
 ├── data/
 │   └── generate_dataset.py  500-workload synthetic generator
@@ -219,6 +226,23 @@ python -m evaluation.benchmark
 # 4. Launch the Streamlit demo app
 streamlit run app/app.py
 ```
+
+---
+
+## Live Demo
+
+The research demo is deployed at:
+**https://intent-aware-cloud-governance.streamlit.app**
+
+The app connects to a pre-generated DuckDB benchmark database (seed 42,
+500 workloads, 28,423 runs). All charts and metrics are live — computed
+from the database at render time. The Live Demo tab runs the actual
+PBCP inference pipeline in real time.
+
+> Note: The app uses controlled benchmark data with injected anomalies
+> to evaluate governance effectiveness. IBD rates and IFS distributions
+> reflect injected fault rates calibrated for stress-testing, not
+> production baselines.
 
 ---
 
@@ -275,7 +299,7 @@ pytest tests/test_phase7.py -v     # IFS + RCA integration (23 tests)
 
 ## Streamlit App
 
-The 5-page app runs the full PBCP pipeline interactively — no setup beyond the dataset.
+The 4-page app runs the full PBCP pipeline interactively — no setup beyond the dataset.
 
 ```bash
 streamlit run app/app.py
@@ -283,11 +307,10 @@ streamlit run app/app.py
 
 | Page | Description |
 |---|---|
-| Home | Architecture diagram, system KPIs, comparison table |
-| Dataset Explorer | Filter and inspect 500 synthetic workloads |
-| CPS Dashboard | CPS by stage/type, IFS distribution, category donut |
-| Live Demo | Type a workload description → intent inference + simulation + IFS in real time |
-| Convergence | Phase 3 convergence curve across 10 generations |
+| Overview | Architecture diagram, system KPIs, comparison table, metric definitions |
+| Prevention Engine | Live Demo (default tab) · Workload Catalogue · Anomaly Detection (Exp 3) |
+| Runtime & Savings | CPS/IFS dashboard · Intervention timeline · Stage and workload type breakdown |
+| Learning System | Convergence study (Exp 6) · Policy synthesis feedback loop |
 
 > **Streamlit Cloud deployment:** push to GitHub → connect at share.streamlit.io → set main file to `app/app.py`.
 
@@ -352,4 +375,5 @@ Interface contracts for Sreeja's modules are documented in [SREEJA_TASKS.md](SRE
 
 ## Citation
 
-> Rapolu, K., & Katta, S. (2026). *PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance*. IACG v2.0.
+> Rapolu, K., & Katta, S. (2026). *PBCP: A Pre-Billing Cost Prevention Framework
+> for Intent-Aware Cloud Governance*. IACG v2.0. Manuscript under review.
