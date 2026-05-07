@@ -193,7 +193,7 @@ with col1:
 | Page | Content |
 |------|---------|
 | **Overview** | Architecture, KPIs, system comparison, metric definitions |
-| **Prevention Engine** | Live Demo with 3 showcase scenarios · Workload Catalogue · Anomaly Detection |
+| **Prevention Engine** | Opens on Live Demo by default; also includes Workload Catalogue and Anomaly Detection |
 | **Runtime & Savings** | CPS / IFS dashboard · Intervention timeline · Stage breakdown |
 | **Learning System** | Convergence study (Exp 6) · Policy synthesis · Feedback loop |
 """)
@@ -210,3 +210,4 @@ with col2:
 | System Roll-up (Exp 5) | Valid CPS 0.559 · ESR 0.981 |
 | Convergence (Exp 6) | Peak CPS 0.733 · 58× vs no-Phase-3 |
 """)
+
