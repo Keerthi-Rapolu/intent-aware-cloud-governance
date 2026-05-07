@@ -68,10 +68,7 @@ Natural Language Workload
 - **Correct**: apply runtime actions when observed behavior diverges from declared intent.
 - **Learn**: update policies and improve prevention quality over repeated generations.
 
-## Evaluation Notes
-
-- **IFS** is the cosine similarity between intent embeddings and behavior embeddings.
-- Dashboard sub-scores provide interpretability only.
+> **Metric note:** IFS is defined as cosine similarity between intent and behavior embeddings. Dashboard sub-scores are interpretability aids only — not the canonical research metric.
 
 ## Key Results
 
@@ -112,8 +109,8 @@ python -m evaluation.benchmark
 streamlit run app/app.py
 ```
 
-> The hosted demo runs without DistilBERT/FAISS due to size constraints.
-> Run locally for the full interactive pipeline.
+> The hosted demo uses keyword-based intent inference in place of DistilBERT; FAISS KNN retrieval
+> and the full NLP pipeline are only available when running locally.
 
 ---
 
@@ -141,6 +138,26 @@ IACG/
 └── config/                 # Cloud pricing, simulation, policy, CPS parameters
 ```
 
+## Benchmark Data
+
+The evaluation uses a synthetic benchmark generated with `data/generate_dataset.py` (seed 42, 500 workloads, 28,423 runs).
+
+| Table | Rows | Description |
+|---|---|---|
+| `workload_intent` | 500 | Workload submissions with NL descriptions and intent labels |
+| `provisioned_config` | 500 | Node counts, instance types, over-provision flags |
+| `runtime_metrics` | 28,423 | Per-run CPU utilization, idle time, actual duration |
+| `cost_records` | 28,423 | Per-run compute and storage cost breakdown |
+| `cps_ifs_records` | 28,423 | CPS, IFS, stage, and intervention decision per run |
+| `historical_incidents` | — | Injected anomaly ground-truth labels |
+| `ai_workload_metrics` | — | LLM/ML-specific token budget and GPU utilization |
+| `policy_registry` | 8 | Built-in and learned governance policies |
+
+Stage breakdown (non-baseline runs): pre-provision 3,896 · runtime 840.
+Workload mix: ETL 130 · Adhoc 95 · ML Training 98 · LLM Pipeline 50 · Batch 77 · Streaming 50.
+
+---
+
 ## Further Reading
 
 - [Design Document](IACG_Design_Document.md)
@@ -151,7 +168,9 @@ IACG/
 ## Authors
 
 - **Keerthi Rapolu** — First Author; system architecture, intent inference, pre-execution simulation, EV intervention model, runtime optimizer, CPS/ESR evaluation, Streamlit research demo.
+  Modules: `intent_model/` · `simulation_engine/` · `policy_engine/` · `runtime_optimizer/` · `cps_metrics/` · `app/`
 - **Sreeja Katta** — Second Author; Intent-Fit Score subsystem, anomaly RCA contributions, policy feedback loop support.
+  Modules: `ifs/` · `anomaly_rca/`
 
 ## Citation
 
