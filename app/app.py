@@ -29,23 +29,23 @@ html, body, [class*="css"] {
 
 /* ── Research card ─────────────────────────────────────── */
 .research-card {
-    background: #161B27;
-    border: 1px solid rgba(255,255,255,0.07);
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
     border-radius: 12px;
     padding: 22px 26px;
     margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.32);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
     transition: border-color 0.2s ease;
 }
 
 /* ── Phase blocks ───────────────────────────────────────── */
 .phase-block {
-    background: #1A2235;
-    border: 1px solid rgba(56,189,248,0.13);
+    background: #FFFFFF;
+    border: 1px solid rgba(123,191,219,0.35);
     border-radius: 14px;
     padding: 24px;
     height: 100%;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.28);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .phase-title {
     font-size: 12px;
@@ -54,7 +54,7 @@ html, body, [class*="css"] {
     text-transform: uppercase;
     margin-bottom: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #E5E7EB;
 }
 .phase-step {
     display: flex;
@@ -62,7 +62,7 @@ html, body, [class*="css"] {
     gap: 10px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: #CBD5E1;
+    color: #374151;
     line-height: 1.55;
 }
 .phase-step-dot {
@@ -74,7 +74,7 @@ html, body, [class*="css"] {
 }
 .phase-arrow {
     text-align: center;
-    color: rgba(255,255,255,0.2);
+    color: #D1D5DB;
     font-size: 15px;
     margin: 2px 0;
 }
@@ -88,51 +88,55 @@ html, body, [class*="css"] {
     font-weight: 600;
     letter-spacing: 0.04em;
 }
-.badge-sim    { background: rgba(56,189,248,0.10); color: #38BDF8;  border: 1px solid rgba(56,189,248,0.25); }
-.badge-proto  { background: rgba(139,92,246,0.10); color: #A78BFA;  border: 1px solid rgba(139,92,246,0.25); }
-.badge-price  { background: rgba(16,185,129,0.10); color: #34D399;  border: 1px solid rgba(16,185,129,0.25); }
-.badge-warn   { background: rgba(245,158,11,0.10); color: #FBBF24;  border: 1px solid rgba(245,158,11,0.25); }
+.badge-sim    { background: rgba(123,191,219,0.15); color: #0891B2; border: 1px solid rgba(123,191,219,0.4); }
+.badge-proto  { background: rgba(195,166,212,0.15); color: #7C3AED; border: 1px solid rgba(195,166,212,0.4); }
+.badge-price  { background: rgba(129,201,149,0.15); color: #15803D; border: 1px solid rgba(129,201,149,0.4); }
+.badge-warn   { background: rgba(255,183,77,0.15);  color: #B45309; border: 1px solid rgba(255,183,77,0.4); }
 
 /* ── Intervention timeline card ─────────────────────────── */
 .iv-card {
-    background: #161B27;
+    background: #FFFFFF;
     border-radius: 10px;
     padding: 18px 22px;
     margin-bottom: 14px;
     border-left: 3px solid;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.24);
+    border-top: 1px solid #E5E7EB;
+    border-right: 1px solid #E5E7EB;
+    border-bottom: 1px solid #E5E7EB;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     transition: box-shadow 0.15s ease;
 }
-.iv-card.ac  { border-color: #10B981; }
-.iv-card.blk { border-color: #EF4444; }
-.iv-card.sug { border-color: #F59E0B; }
-.iv-card.pas { border-color: #38BDF8; }
-.iv-card h4  { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #E2E8F0; }
-.iv-card p   { margin: 2px 0; font-size: 12px; color: #94A3B8; }
-.iv-card .highlight { color: #E2E8F0; font-weight: 600; }
+.iv-card.ac  { border-left-color: #81C995; }
+.iv-card.blk { border-left-color: #F28B82; }
+.iv-card.sug { border-left-color: #FFB74D; }
+.iv-card.pas { border-left-color: #A8D5A2; }
+.iv-card h4  { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #1A1A2E; }
+.iv-card p   { margin: 2px 0; font-size: 12px; color: #6B7280; }
+.iv-card .highlight { color: #1A1A2E; font-weight: 600; }
 
 /* ── Case study card ────────────────────────────────────── */
 .case-card {
-    background: #161B27;
-    border: 1px solid rgba(239,68,68,0.13);
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-top: 2px solid #F28B82;
     border-radius: 12px;
     padding: 20px 22px;
     margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.case-card .case-title { font-size: 13px; font-weight: 600; color: #F87171; margin-bottom: 10px; }
+.case-card .case-title { font-size: 13px; font-weight: 600; color: #DC2626; margin-bottom: 10px; }
 .case-card .case-row   { display: flex; justify-content: space-between; margin-bottom: 5px; }
-.case-card .case-label { font-size: 12px; color: #64748B; }
-.case-card .case-val   { font-size: 12px; color: #CBD5E1; font-weight: 500; }
-.case-card .case-ifs   { font-size: 20px; font-weight: 700; color: #EF4444; margin-top: 10px; }
+.case-card .case-label { font-size: 12px; color: #9CA3AF; }
+.case-card .case-val   { font-size: 12px; color: #374151; font-weight: 500; }
+.case-card .case-ifs   { font-size: 20px; font-weight: 700; color: #DC2626; margin-top: 10px; }
 
-/* ── Section divider ────────────────────────────────────── */
+/* ── Section label ──────────────────────────────────────── */
 .section-label {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #475569;
+    color: #9CA3AF;
     margin-bottom: 14px;
 }
 </style>
@@ -141,14 +145,14 @@ html, body, [class*="css"] {
 # -- Sidebar ------------------------------------------------------------------
 st.sidebar.markdown("""
 <div style="padding: 4px 0 12px 0;">
-  <div style="font-size: 16px; font-weight: 700; color: #E2E8F0;">PBCP Research Demo</div>
-  <div style="font-size: 11px; color: #64748B; margin-top: 2px;">IACG v2.0 · Keerthi Rapolu</div>
+  <div style="font-size: 16px; font-weight: 600; color: #1A1A2E;">PBCP Research Demo</div>
+  <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">IACG v2.0 · Keerthi Rapolu</div>
 </div>
 """, unsafe_allow_html=True)
 st.sidebar.divider()
 st.sidebar.markdown("""
-<div style="font-size: 12px; color: #94A3B8; line-height: 1.8;">
-<b style="color:#E2E8F0;">Pages</b><br>
+<div style="font-size: 12px; color: #6B7280; line-height: 1.8;">
+<b style="color:#1A1A2E;">Pages</b><br>
 Use the sidebar links above to navigate.
 </div>
 """, unsafe_allow_html=True)
@@ -157,7 +161,7 @@ Use the sidebar links above to navigate.
 st.markdown("""
 <div style="margin-bottom: 8px;">
   <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
-               color: #38BDF8; opacity: 0.9;">
+               color: #0891B2;">
     Cloud Systems Research · IACG v2.0
   </span>
 </div>

@@ -25,13 +25,13 @@ tab_demo, tab_catalogue, tab_anomaly = st.tabs(
 # ─────────────────────────────────────────────────────────────────────────────
 # CHART THEME CONSTANTS (keep dark)
 # ─────────────────────────────────────────────────────────────────────────────
-_BG, _BG2, _GRID, _TEXT = "#0D1117", "#161B27", "rgba(255,255,255,0.06)", "#94A3B8"
+_BG, _BG2, _GRID, _TEXT = "#FAFAF8", "#FFFFFF", "rgba(0,0,0,0.05)", "#6B7280"
 
 INT_COLOR_MAP = {
-    "BLOCK":        "#EF4444",
-    "AUTO_CORRECT": "#10B981",
-    "SUGGEST":      "#F59E0B",
-    "PASS":         "#38BDF8",
+    "BLOCK":        "#DC2626",
+    "AUTO_CORRECT": "#15803D",
+    "SUGGEST":      "#B45309",
+    "PASS":         "#0891B2",
 }
 INT_CSS_CLASS = {"BLOCK": "blk", "AUTO_CORRECT": "ac", "SUGGEST": "sug", "PASS": "pas"}
 
@@ -67,7 +67,7 @@ with tab_demo:
   <p><span class="highlight">customer-churn-weekly</span></p>
   <p>32 nodes requested · 24% predicted utilization</p>
   <p>Spark ML · 3 TB dataset · PII</p>
-  <p style="margin-top:8px; color:#10B981; font-weight:700;">
+  <p style="margin-top:8px; color:#15803D; font-weight:600;">
     AUTO_CORRECT → 9 nodes<br>$382 prevented · CPS 0.719
   </p>
 </div>
@@ -80,7 +80,7 @@ with tab_demo:
   <p><span class="highlight">billing-reconciliation-nightly</span></p>
   <p>16 nodes requested · 51% predicted utilization</p>
   <p>ETL · 500 GB Parquet · nightly window</p>
-  <p style="margin-top:8px; color:#F59E0B; font-weight:700;">
+  <p style="margin-top:8px; color:#B45309; font-weight:600;">
     SUGGEST → 11 nodes<br>$40 estimated savings · CPS 0.312
   </p>
 </div>
@@ -93,7 +93,7 @@ with tab_demo:
   <p><span class="highlight">fraud-stream-monitor</span></p>
   <p>6 nodes requested · 82% predicted utilization</p>
   <p>Streaming · Kafka · autoscaling enabled</p>
-  <p style="margin-top:8px; color:#38BDF8; font-weight:700;">
+  <p style="margin-top:8px; color:#0891B2; font-weight:600;">
     PASS · No intervention required<br>IFS 0.921 · well-aligned
   </p>
 </div>
@@ -152,7 +152,7 @@ with tab_demo:
             "Duration\nAlignment":    0.70,
             "Resource\nAlignment":    0.68,
         }
-        _bar_c = ["#EF4444" if v < 0.50 else "#F59E0B" if v < 0.70 else "#10B981"
+        _bar_c = ["#F28B82" if v < 0.50 else "#FFB74D" if v < 0.70 else "#81C995"
                   for v in example_sub.values()]
         eg_fig = go.Figure(go.Bar(
             x=list(example_sub.keys()), y=list(example_sub.values()),
@@ -160,10 +160,10 @@ with tab_demo:
             text=[f"{v:.3f}" for v in example_sub.values()],
             textposition="outside",
         ))
-        eg_fig.add_hline(y=0.65, line_dash="dash", line_color="#EF4444", line_width=1.5,
+        eg_fig.add_hline(y=0.65, line_dash="dash", line_color="#DC2626", line_width=1.5,
                          annotation_text="Alert threshold (0.65)",
                          annotation_position="top right",
-                         annotation_font_color="#EF4444")
+                         annotation_font_color="#DC2626")
         eg_fig.update_layout(
             yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
                        title_font=dict(size=12, color=_TEXT)),
@@ -412,13 +412,13 @@ After PBCP Intervention
     )
 
     ifs_meta = {
-        "well_aligned": ("#10B981", "Well Aligned",
+        "well_aligned": ("#15803D", "Well Aligned",
                          "Predicted behavior aligns with declared intent."),
-        "minor":        ("#38BDF8", "Minor Divergence",
+        "minor":        ("#0891B2", "Minor Divergence",
                          "Small gap between intent and predicted behavior."),
-        "significant":  ("#F59E0B", "Significant Divergence",
+        "significant":  ("#B45309", "Significant Divergence",
                          "Noticeable divergence — warrants investigation."),
-        "severe":       ("#EF4444", "Severe Divergence",
+        "severe":       ("#DC2626", "Severe Divergence",
                          "Large divergence — workload is likely misconfigured."),
     }
     ifs_color, ifs_badge, verdict_msg = ifs_meta.get(
@@ -433,23 +433,23 @@ After PBCP Intervention
             "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#334155",
                      "tickfont": {"color": "#94A3B8"}},
             "bar":  {"color": ifs_color, "thickness": 0.25},
-            "bgcolor": "#0D1117",
+            "bgcolor": "#FAFAF8",
             "borderwidth": 0,
             "steps": [
-                {"range": [0.00, 0.50], "color": "rgba(239,68,68,0.08)"},
-                {"range": [0.50, 0.65], "color": "rgba(245,158,11,0.08)"},
-                {"range": [0.65, 0.85], "color": "rgba(56,189,248,0.06)"},
-                {"range": [0.85, 1.00], "color": "rgba(16,185,129,0.08)"},
+                {"range": [0.00, 0.50], "color": "rgba(242,139,130,0.18)"},
+                {"range": [0.50, 0.65], "color": "rgba(255,183,77,0.15)"},
+                {"range": [0.65, 0.85], "color": "rgba(123,191,219,0.12)"},
+                {"range": [0.85, 1.00], "color": "rgba(129,201,149,0.18)"},
             ],
             "threshold": {
-                "line": {"color": "#EF4444", "width": 2},
+                "line": {"color": "#DC2626", "width": 2},
                 "thickness": 0.8, "value": 0.65,
             },
         },
         title={"text": f"<b>{ifs_badge}</b>",
                "font": {"size": 16, "color": ifs_color}},
     ))
-    gauge.update_layout(height=260, paper_bgcolor=_BG, plot_bgcolor=_BG,
+    gauge.update_layout(height=260, paper_bgcolor="#FAFAF8", plot_bgcolor="#FAFAF8",
                         font=dict(color=_TEXT, size=12),
                         margin=dict(t=40, b=0, l=32, r=32))
 
@@ -496,7 +496,7 @@ After PBCP Intervention
         "Duration\nAlignment":    ifs_rec.duration_alignment,
         "Resource\nAlignment":    ifs_rec.resource_alignment,
     }
-    bar_colors = ["#EF4444" if v < 0.50 else "#F59E0B" if v < 0.70 else "#10B981"
+    bar_colors = ["#F28B82" if v < 0.50 else "#FFB74D" if v < 0.70 else "#81C995"
                   for v in sub_scores.values()]
     bar_fig = go.Figure(go.Bar(
         x=list(sub_scores.keys()), y=list(sub_scores.values()),
@@ -504,10 +504,10 @@ After PBCP Intervention
         text=[f"{v:.3f}" for v in sub_scores.values()],
         textposition="outside",
     ))
-    bar_fig.add_hline(y=0.65, line_dash="dash", line_color="#EF4444", line_width=1.5,
+    bar_fig.add_hline(y=0.65, line_dash="dash", line_color="#DC2626", line_width=1.5,
                       annotation_text="Alert threshold (0.65)",
                       annotation_position="top right",
-                      annotation_font_color="#EF4444")
+                      annotation_font_color="#DC2626")
     bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
     bar_fig.update_layout(
         yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
@@ -679,11 +679,11 @@ with tab_anomaly:
                    m["ifs"]["f1"],              m["ifs"]["fpr"]]
         fig = go.Figure()
         fig.add_trace(go.Bar(
-            name="CPU Threshold", x=metrics, y=basic_v, marker_color="#F59E0B", opacity=0.8,
+            name="CPU Threshold", x=metrics, y=basic_v, marker_color="#FFB74D", opacity=0.82,
             text=[f"{v:.3f}" for v in basic_v], textposition="outside",
         ))
         fig.add_trace(go.Bar(
-            name="IFS Detector", x=metrics, y=smart_v, marker_color="#38BDF8", opacity=0.8,
+            name="IFS Detector", x=metrics, y=smart_v, marker_color="#7BBFDB", opacity=0.82,
             text=[f"{v:.3f}" for v in smart_v], textposition="outside",
         ))
         fig.update_layout(
@@ -726,16 +726,16 @@ with tab_anomaly:
         )
         fig3 = go.Figure()
         for col_k, color, name in [
-            ("precision", "#10B981", "Precision"),
-            ("recall",    "#EF4444", "Recall"),
-            ("f1",        "#38BDF8", "F1 Score"),
+            ("precision", "#81C995", "Precision"),
+            ("recall",    "#F28B82", "Recall"),
+            ("f1",        "#7BBFDB", "F1 Score"),
         ]:
             fig3.add_trace(go.Scatter(
                 x=sweep["threshold"], y=sweep[col_k],
                 mode="lines+markers", name=name,
                 line=dict(color=color, width=2.5), marker=dict(size=7),
             ))
-        fig3.add_vline(x=theta, line_dash="dash", line_color="#475569", line_width=2,
+        fig3.add_vline(x=theta, line_dash="dash", line_color="#9CA3AF", line_width=2,
                        annotation_text=f"  θ = {theta:.2f}",
                        annotation_font=dict(color=_TEXT, size=12))
         fig3.update_layout(
@@ -765,7 +765,7 @@ with tab_anomaly:
         fig4.add_trace(go.Bar(
             x=["Type Divergence", "No Divergence"],
             y=anomaly_rates,
-            marker_color=["#F59E0B", "#10B981"], opacity=0.85,
+            marker_color=["#FFB74D", "#81C995"], opacity=0.85,
             text=[f"{v:.1%}" for v in anomaly_rates], textposition="outside",
         ))
         fig4.update_layout(

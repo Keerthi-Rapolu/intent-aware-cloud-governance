@@ -16,7 +16,7 @@ from components.data_loader import (
 )
 from components.charts import convergence_line
 
-_BG, _BG2, _GRID, _TEXT = "#0D1117", "#161B27", "rgba(255,255,255,0.06)", "#94A3B8"
+_BG, _BG2, _GRID, _TEXT = "#FAFAF8", "#FFFFFF", "rgba(0,0,0,0.05)", "#6B7280"
 
 st.set_page_config(page_title="Learning System — PBCP", layout="wide")
 st.title("Learning System")
@@ -188,17 +188,17 @@ with tab_feedback:
             rc_plot = rc_df.copy()
             rc_plot["label"] = rc_plot["root_cause"].map(lambda x: RC_LABELS.get(x, x))
             RC_COLORS = {
-                "Over-Provisioned": "#38BDF8",
-                "Idle Cluster":     "#F59E0B",
-                "Runaway Job":      "#EF4444",
-                "Type Mismatch":    "#8B5CF6",
-                "Unknown":          "#475569",
+                "Over-Provisioned": "#7BBFDB",
+                "Idle Cluster":     "#FFB74D",
+                "Runaway Job":      "#F28B82",
+                "Type Mismatch":    "#C3A6D4",
+                "Unknown":          "#9CA3AF",
             }
-            colors = [RC_COLORS.get(l, "#475569") for l in rc_plot["label"]]
+            colors = [RC_COLORS.get(l, "#9CA3AF") for l in rc_plot["label"]]
             fig = go.Figure(go.Pie(
                 labels=rc_plot["label"], values=rc_plot["n"],
                 hole=0.48, marker_colors=colors, textinfo="percent+label",
-                textfont_color="#E2E8F0",
+                textfont_color="#374151",
                 marker=dict(line=dict(color=_BG, width=2)),
             ))
             fig.update_layout(showlegend=False, paper_bgcolor=_BG, plot_bgcolor=_BG2,
@@ -217,7 +217,7 @@ with tab_feedback:
             rc_plot = rc_df.copy()
             rc_plot["label"] = rc_plot["root_cause"].map(lambda x: RC_LABELS.get(x, x))
             rc_plot = rc_plot.sort_values("mean_cost_impact")
-            bar_colors2 = [RC_COLORS.get(l, "#475569") for l in rc_plot["label"]]
+            bar_colors2 = [RC_COLORS.get(l, "#9CA3AF") for l in rc_plot["label"]]
             fig2 = go.Figure(go.Bar(
                 x=rc_plot["mean_cost_impact"], y=rc_plot["label"],
                 orientation="h", marker_color=bar_colors2, opacity=0.85,
@@ -253,7 +253,7 @@ with tab_feedback:
             ).fillna(counts["source"])
             fig3 = go.Figure(go.Bar(
                 x=counts["label"], y=counts["n"],
-                marker_color=["#38BDF8", "#10B981"][:len(counts)],
+                marker_color=["#7BBFDB", "#81C995"][:len(counts)],
                 opacity=0.85,
                 text=counts["n"], textposition="outside",
             ))
@@ -277,9 +277,10 @@ with tab_feedback:
             fig4 = go.Figure()
             fig4.add_trace(go.Histogram(
                 x=ibd_ifs["ifs"], nbinsx=25,
-                marker_color="#EF4444", opacity=0.75,
+                marker_color="#F28B82", opacity=0.72,
+                marker_line=dict(width=0.5, color="#FFFFFF"),
             ))
-            fig4.add_vline(x=0.65, line_dash="dash", line_color="#475569",
+            fig4.add_vline(x=0.65, line_dash="dash", line_color="#9CA3AF",
                            annotation_text="Alert threshold (0.65)",
                            annotation_position="top right",
                            annotation_font_color=_TEXT)

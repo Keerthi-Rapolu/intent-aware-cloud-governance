@@ -78,8 +78,8 @@ st.caption(
     "Each card shows the full governance decision lifecycle for a workload."
 )
 
-INT_COLOR = {"AUTO_CORRECT": "#10B981", "BLOCK": "#EF4444",
-             "SUGGEST": "#F59E0B", "PASS": "#38BDF8"}
+INT_COLOR = {"AUTO_CORRECT": "#15803D", "BLOCK": "#DC2626",
+             "SUGGEST": "#B45309", "PASS": "#0891B2"}
 INT_CLASS  = {"AUTO_CORRECT": "ac", "BLOCK": "blk", "SUGGEST": "sug", "PASS": "pas"}
 
 examples = load_intervention_examples()

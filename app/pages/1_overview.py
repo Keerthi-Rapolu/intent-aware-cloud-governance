@@ -12,7 +12,7 @@ st.set_page_config(page_title="Overview — PBCP", layout="wide")
 # Research identity bar
 st.markdown("""
 <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
-            color: #38BDF8; margin-bottom: 6px; opacity: 0.9;">
+            color: #0891B2; margin-bottom: 6px;">
   Cloud Systems Research &nbsp;·&nbsp; IACG v2.0
 </div>
 """, unsafe_allow_html=True)
@@ -64,54 +64,54 @@ arch_col1, arch_col2, arch_col3 = st.columns(3)
 with arch_col1:
     st.markdown("""
 <div class="phase-block">
-  <div class="phase-title" style="color: #38BDF8;">
+  <div class="phase-title" style="color: #0891B2;">
     Phase 1 &nbsp;·&nbsp; PREVENT
   </div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#38BDF8;"></div>
-    <div><b style="color:#E2E8F0;">Natural Language Workload</b><br>
+    <div class="phase-step-dot" style="background:#7BBFDB;"></div>
+    <div><b style="color:#1A1A2E;">Natural Language Workload</b><br>
     Job description submitted via CLI, API, or scheduler integration</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#38BDF8;"></div>
-    <div><b style="color:#E2E8F0;">Intent Inference</b><br>
+    <div class="phase-step-dot" style="background:#7BBFDB;"></div>
+    <div><b style="color:#1A1A2E;">Intent Inference</b><br>
     Hybrid NLP: deterministic keyword extraction → DistilBERT (optional)</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#38BDF8;"></div>
-    <div><b style="color:#E2E8F0;">FAISS KNN Retrieval</b><br>
+    <div class="phase-step-dot" style="background:#7BBFDB;"></div>
+    <div><b style="color:#1A1A2E;">FAISS KNN Retrieval</b><br>
     64-dim workload embeddings, cosine similarity over historical runs</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#38BDF8;"></div>
-    <div><b style="color:#E2E8F0;">Pre-Execution Simulation</b><br>
+    <div class="phase-step-dot" style="background:#7BBFDB;"></div>
+    <div><b style="color:#1A1A2E;">Pre-Execution Simulation</b><br>
     Predicts utilization · right-sizes node count · computes cost delta</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#38BDF8;"></div>
-    <div><b style="color:#E2E8F0;">EV Decision Engine</b><br>
+    <div class="phase-step-dot" style="background:#7BBFDB;"></div>
+    <div><b style="color:#1A1A2E;">EV Decision Engine</b><br>
     Maximises E[savings − correction_cost] per intervention option</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-    <span style="background:rgba(239,68,68,0.18); color:#EF4444; padding:3px 9px;
-                 border-radius:6px; font-size:12px; font-weight:700;">BLOCK</span>
-    <span style="background:rgba(16,185,129,0.18); color:#10B981; padding:3px 9px;
-                 border-radius:6px; font-size:12px; font-weight:700;">AUTO_CORRECT</span>
-    <span style="background:rgba(245,158,11,0.18); color:#F59E0B; padding:3px 9px;
-                 border-radius:6px; font-size:12px; font-weight:700;">SUGGEST</span>
-    <span style="background:rgba(56,189,248,0.18); color:#38BDF8; padding:3px 9px;
-                 border-radius:6px; font-size:12px; font-weight:700;">PASS</span>
+    <span style="background:rgba(242,139,130,0.18); color:#DC2626; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:600;">BLOCK</span>
+    <span style="background:rgba(129,201,149,0.18); color:#15803D; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:600;">AUTO_CORRECT</span>
+    <span style="background:rgba(255,183,77,0.18); color:#B45309; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:600;">SUGGEST</span>
+    <span style="background:rgba(123,191,219,0.18); color:#0891B2; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:600;">PASS</span>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -119,48 +119,48 @@ with arch_col1:
 with arch_col2:
     st.markdown("""
 <div class="phase-block">
-  <div class="phase-title" style="color: #10B981;">
+  <div class="phase-title" style="color: #15803D;">
     Phase 2 &nbsp;·&nbsp; CORRECT
   </div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#10B981;"></div>
-    <div><b style="color:#E2E8F0;">Runtime Monitoring</b><br>
+    <div class="phase-step-dot" style="background:#81C995;"></div>
+    <div><b style="color:#1A1A2E;">Runtime Monitoring</b><br>
     Continuous telemetry ingestion: CPU, memory, network, idle time</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#10B981;"></div>
-    <div><b style="color:#E2E8F0;">Anomaly Signals</b><br>
+    <div class="phase-step-dot" style="background:#81C995;"></div>
+    <div><b style="color:#1A1A2E;">Anomaly Signals</b><br>
     Idle cluster detection · utilization underrun · runtime overrun</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#10B981;"></div>
-    <div><b style="color:#E2E8F0;">Runtime Optimizer</b><br>
+    <div class="phase-step-dot" style="background:#81C995;"></div>
+    <div><b style="color:#1A1A2E;">Runtime Optimizer</b><br>
     Mid-execution right-sizing decisions with EV model re-evaluation</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#10B981;"></div>
-    <div><b style="color:#E2E8F0;">Intervention Actions</b><br>
+    <div class="phase-step-dot" style="background:#81C995;"></div>
+    <div><b style="color:#1A1A2E;">Intervention Actions</b><br>
     Node downscale · spot migration · graceful job termination</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#10B981;"></div>
-    <div><b style="color:#E2E8F0;">CPS Computation</b><br>
+    <div class="phase-step-dot" style="background:#81C995;"></div>
+    <div><b style="color:#1A1A2E;">CPS Computation</b><br>
     CPS = prevented / potential · ESR multiplier for gaming resistance</div>
   </div>
 
-  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(16,185,129,0.08);
-              border-radius: 8px; border: 1px solid rgba(16,185,129,0.2);">
-    <div style="font-size: 12px; color: #34D399; font-weight: 700;">Exp 2 Scenario C Result</div>
-    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">
+  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(129,201,149,0.12);
+              border-radius: 8px; border: 1px solid rgba(129,201,149,0.35);">
+    <div style="font-size: 12px; color: #15803D; font-weight: 600;">Exp 2 Scenario C Result</div>
+    <div style="font-size: 11px; color: #6B7280; margin-top: 4px;">
       Runaway ML job · 20 → 9 nodes<br>$97.92 prevented · CPS 0.667
     </div>
   </div>
@@ -170,48 +170,48 @@ with arch_col2:
 with arch_col3:
     st.markdown("""
 <div class="phase-block">
-  <div class="phase-title" style="color: #8B5CF6;">
+  <div class="phase-title" style="color: #7C3AED;">
     Phase 3 &nbsp;·&nbsp; LEARN
   </div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
-    <div><b style="color:#E2E8F0;">IFS Computation</b><br>
+    <div class="phase-step-dot" style="background:#C3A6D4;"></div>
+    <div><b style="color:#1A1A2E;">IFS Computation</b><br>
     Alignment score from workload embedding similarity to behavior embedding</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
-    <div><b style="color:#E2E8F0;">Intent-Behavior Divergence Detection</b><br>
+    <div class="phase-step-dot" style="background:#C3A6D4;"></div>
+    <div><b style="color:#1A1A2E;">Intent-Behavior Divergence Detection</b><br>
     IFS &lt; 0.65 triggers anomaly classification and root-cause attribution</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
-    <div><b style="color:#E2E8F0;">Policy Synthesis</b><br>
+    <div class="phase-step-dot" style="background:#C3A6D4;"></div>
+    <div><b style="color:#1A1A2E;">Policy Synthesis</b><br>
     Recurring failure patterns (≥ 3 occurrences) trigger automated rule generation</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
-    <div><b style="color:#E2E8F0;">Embedding Updates</b><br>
+    <div class="phase-step-dot" style="background:#C3A6D4;"></div>
+    <div><b style="color:#1A1A2E;">Embedding Updates</b><br>
     Prior distributions updated with new behavioral evidence</div>
   </div>
   <div class="phase-arrow">↓</div>
 
   <div class="phase-step">
-    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
-    <div><b style="color:#E2E8F0;">Convergence Improvement</b><br>
+    <div class="phase-step-dot" style="background:#C3A6D4;"></div>
+    <div><b style="color:#1A1A2E;">Convergence Improvement</b><br>
     CPS improves across generations · Exp 6: peak 0.733, 58× vs no-Phase-3</div>
   </div>
 
-  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(139,92,246,0.08);
-              border-radius: 8px; border: 1px solid rgba(139,92,246,0.2);">
-    <div style="font-size: 12px; color: #A78BFA; font-weight: 700;">IBD Detection Result (Exp 3)</div>
-    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">
+  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(195,166,212,0.15);
+              border-radius: 8px; border: 1px solid rgba(195,166,212,0.4);">
+    <div style="font-size: 12px; color: #7C3AED; font-weight: 600;">IBD Detection Result (Exp 3)</div>
+    <div style="font-size: 11px; color: #6B7280; margin-top: 4px;">
       IFS detector F1 = 0.761<br>CPU-threshold baseline F1 = 0.605
     </div>
   </div>
