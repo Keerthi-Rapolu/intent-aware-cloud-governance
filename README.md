@@ -127,6 +127,6 @@ streamlit run app/app.py
   title  = {PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance},
   author = {Rapolu, Keerthi and Katta, Sreeja},
   year   = {2026},
-  note   = {IACG v2.0 Research Prototype}
+  note   = {IACG v2.0 Research Prototype; Manuscript under review}
 }
 ```
