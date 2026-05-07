@@ -22,8 +22,6 @@
 
 [![Launch Live Demo](assets/pbcp_demo_banner.png)](https://intent-aware-cloud-governance.streamlit.app/)
 
-<!-- Add assets/pbcp_live_demo.gif here after recording a short Streamlit walkthrough -->
-
 ## What PBCP Does
 
 - Infers workload intent from natural-language descriptions.
@@ -33,7 +31,9 @@
 
 ## Why This Matters
 
-A concise example: a team submits a 20-node cluster for a short ETL workload. The job finishes, but the cluster stays idle and cost is already incurred by the time a traditional FinOps alert appears. PBCP intervenes earlier by blocking or auto-correcting the request before billing.
+Traditional cloud governance systems detect waste after infrastructure has already been provisioned, used, and billed. PBCP shifts the decision point earlier: it infers workload intent, predicts likely waste, and applies governance intervention before cost is incurred.
+
+Example: a team submits a 20-node cluster for a short ETL workload. The job finishes, but the cluster remains idle. A traditional FinOps alert arrives after the waste already exists; PBCP can block, suggest, or auto-correct the request before billing begins.
 
 ## Architecture
 
@@ -114,6 +114,11 @@ streamlit run app/app.py
 - [Technical Details](docs/TECHNICAL_DETAILS.md)
 - [Experiments](docs/EXPERIMENTS.md)
 - [Dashboard Guide](docs/DASHBOARD_GUIDE.md)
+
+## Authors
+
+- **Keerthi Rapolu** — First Author; system architecture, intent inference, pre-execution simulation, EV intervention model, runtime optimizer, CPS/ESR evaluation, Streamlit research demo.
+- **Sreeja Katta** — Second Author; Intent-Fit Score subsystem, anomaly RCA contributions, policy feedback loop support.
 
 ## Citation
 
