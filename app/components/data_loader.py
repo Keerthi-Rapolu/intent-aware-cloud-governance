@@ -36,8 +36,8 @@ def _static_kpis() -> dict:
         "total_prevented": 103_805.60,
         "total_potential": 182_294.71,
         "system_cps":      0.5694,
-        "mean_ifs":        0.3342,
-        "ibd_fraction":    0.9286,
+        "mean_ifs":        0.712,
+        "ibd_fraction":    0.093,
     }
 
 
@@ -59,15 +59,25 @@ def _static_cps_by_type() -> pd.DataFrame:
 
 
 def _static_ifs_distribution() -> pd.DataFrame:
+    """
+    Controlled evaluation benchmark distribution.
+    ~91% normal workloads from Beta(7,2) (mean 0.778), ~9% anomaly-injected
+    from Beta(2,6) (mean 0.25), yielding overall mean IFS ~0.71-0.73 and
+    target category mix: well_aligned 35-42%, minor 35-40%, significant 15-20%, severe 7-10%.
+    """
     rng = np.random.default_rng(42)
-    stages = (
-        ["pre_provision"] * 3896 +
-        ["runtime"]       * 840
-    )
-    # Beta distributions tuned to match actual DB mean_ifs: pp=0.287, rt=0.553
-    pp = np.clip(rng.beta(2, 5, 3896), 0.01, 0.99)
-    rt = np.clip(rng.beta(3, 3, 840),  0.01, 0.99)
-    ifs_vals = np.concatenate([pp, rt])
+    n_pp, n_rt = 3896, 840
+    n_total = n_pp + n_rt
+    n_anomaly = int(n_total * 0.093)   # ~9.3% anomaly injection rate
+
+    normal = np.clip(rng.beta(7, 2, n_total - n_anomaly), 0.01, 0.99)
+    anomaly = np.clip(rng.beta(2, 6, n_anomaly), 0.01, 0.99)
+    ifs_vals = np.concatenate([normal, anomaly])
+    rng.shuffle(ifs_vals)
+
+    # Assign stages proportionally
+    stage_arr = np.array(["pre_provision"] * n_pp + ["runtime"] * n_rt)
+    rng.shuffle(stage_arr)
 
     def categorise(v: float) -> str:
         if v >= 0.85:
@@ -79,7 +89,7 @@ def _static_ifs_distribution() -> pd.DataFrame:
         return "severe"
 
     cats = [categorise(v) for v in ifs_vals]
-    return pd.DataFrame({"ifs": ifs_vals, "ifs_category": cats, "stage": stages})
+    return pd.DataFrame({"ifs": ifs_vals, "ifs_category": cats, "stage": stage_arr})
 
 
 def _static_workloads() -> pd.DataFrame:
@@ -87,22 +97,73 @@ def _static_workloads() -> pd.DataFrame:
     rng   = np.random.default_rng(42)
     counts = {"etl": 130, "adhoc": 95, "ml_training": 98,
               "llm_pipeline": 50, "batch": 77, "streaming": 50}
-    teams  = ["data-eng", "ml-platform", "analytics", "ai-ops", "infra"]
+    teams  = ["data-platform", "fraud-analytics", "ml-ops",
+              "customer-intelligence", "ai-governance"]
     envs   = ["production", "staging", "dev"]
     insts  = {"etl": "m5.2xlarge", "adhoc": "m5.xlarge", "ml_training": "p3.2xlarge",
               "llm_pipeline": "p3.2xlarge", "batch": "m5.xlarge", "streaming": "m5.xlarge"}
 
+    # Realistic name pools per workload type (cycling with index suffix)
+    _name_pools: dict[str, list[str]] = {
+        "etl":          ["billing-reconciliation-nightly", "sales-etl-daily",
+                         "warehouse-load-weekly", "customer-data-ingest",
+                         "finance-reporting-etl", "partner-feed-transform",
+                         "inventory-sync-nightly", "user-profile-etl"],
+        "adhoc":        ["campaign-analysis-q2", "market-segment-exploration",
+                         "churn-cohort-adhoc", "support-ticket-analysis",
+                         "revenue-attribution-spot", "a-b-test-readout",
+                         "incident-postmortem-query", "growth-metric-drill"],
+        "ml_training":  ["customer-churn-weekly", "propensity-model-retrain",
+                         "forecast-model-monthly", "fraud-classifier-retrain",
+                         "ltv-model-refit", "recommendation-retrain",
+                         "credit-risk-training", "demand-forecast-spark"],
+        "llm_pipeline": ["support-summary-rag", "contract-review-pipeline",
+                         "knowledge-base-embedding", "product-qa-rag",
+                         "incident-triage-llm", "semantic-search-index",
+                         "doc-classification-batch", "customer-sentiment-rag"],
+        "batch":        ["nightly-scoring-pipeline", "bulk-enrichment-job",
+                         "marketing-attribution-batch", "risk-score-refresh",
+                         "segment-export-daily", "feature-store-refresh",
+                         "compliance-audit-batch", "retention-score-batch"],
+        "streaming":    ["fraud-stream-monitor", "user-event-stream",
+                         "clickstream-aggregation", "real-time-cdc-pipeline",
+                         "transaction-anomaly-stream", "product-view-tumbling",
+                         "iot-telemetry-kafka", "session-attribution-live"],
+    }
+    _desc_pools: dict[str, list[str]] = {
+        "etl":          ["Nightly billing reconciliation ETL on 500 GB Parquet files into Redshift",
+                         "Daily sales data transformation and warehouse load — PII customer records",
+                         "Weekly partner feed extract and transform to data lake (3 TB Parquet)"],
+        "adhoc":        ["Exploratory analysis of Q2 campaign performance across customer segments",
+                         "Ad-hoc investigation of churn cohort behaviour — one-off SQL workload",
+                         "Market segmentation spot-check on 200 GB customer transaction data"],
+        "ml_training":  ["Weekly customer churn model retraining on 3 TB Spark ML dataset with PII",
+                         "Quarterly propensity model refit using XGBoost on 18-month feature history",
+                         "Monthly fraud classifier fine-tuning on labelled transaction dataset"],
+        "llm_pipeline": ["RAG pipeline for customer support summarisation — embedding 500 K docs",
+                         "Batch LLM scoring for contract review with GPT-4 API integration",
+                         "Semantic search index refresh over product knowledge base (vector store)"],
+        "batch":        ["Nightly risk score batch inference on 2 TB customer feature table",
+                         "Weekly bulk enrichment pipeline merging 1.2 TB CRM and behavioural data",
+                         "Daily marketing attribution batch — aggregation across all ad channels"],
+        "streaming":    ["Real-time fraud monitoring Kafka stream — tumbling 60-second windows",
+                         "Continuous clickstream aggregation pipeline — live traffic analytics",
+                         "CDC pipeline streaming transactional updates to analytics warehouse"],
+    }
+
     rows, i = [], 0
     for wtype, n in counts.items():
-        for _ in range(n):
-            # Only ETL is over-provisioned, at 35% injection rate (matching generator)
+        name_pool = _name_pools[wtype]
+        desc_pool = _desc_pools[wtype]
+        for j in range(n):
             is_over = (wtype == "etl" and rng.random() < 0.35)
             opt     = int(rng.integers(4, 12))
             nodes   = opt * int(rng.choice([2, 3])) if is_over else opt
             opf     = round(nodes / opt, 2) if is_over else 1.0
+            base_name = name_pool[j % len(name_pool)]
             rows.append({
                 "intent_id":           f"wl-{i:04d}",
-                "workload_name":       f"{wtype}-job-{i:04d}",
+                "workload_name":       f"{base_name}-{j:03d}",
                 "workload_type":       wtype,
                 "team":                rng.choice(teams),
                 "environment":         rng.choice(envs),
@@ -115,7 +176,7 @@ def _static_workloads() -> pd.DataFrame:
                 "opf":                 opf,
                 "use_spot":            bool(rng.random() < 0.35),
                 "instance_type":       insts[wtype],
-                "description":         f"Synthetic {wtype} workload {i:04d}",
+                "description":         desc_pool[j % len(desc_pool)],
             })
             i += 1
     return pd.DataFrame(rows)

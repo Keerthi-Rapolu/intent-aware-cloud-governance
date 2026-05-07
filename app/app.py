@@ -37,11 +37,8 @@ Use the sidebar to navigate between pages:
 
 | Page | What it shows |
 |------|---------------|
-| **Home** | System overview, KPIs, architecture |
-| **Explore Workloads** | Browse and filter 500 synthetic workloads |
-| **Cost Savings Dashboard** | Prevention metrics by stage and workload type |
-| **Live Demo** | Type a workload description — see live simulation + IFS score |
-| **System Improvement Over Time** | Learning curve across 10 generations, 4 scenarios |
-| **Anomaly Detection** | Smart detector vs CPU-threshold comparison (Exp 3) |
-| **How the System Learns** | The 4-step feedback loop that turns mistakes into rules |
+| **Overview** | System KPIs, architecture, comparison with existing approaches, metric definitions |
+| **Prevention Engine** | Live Demo (5 presets, intent inference, IFS gauge) · Workload Catalogue · Anomaly Detection |
+| **Runtime & Savings** | CPS/IFS metrics by stage, workload type, and alignment category |
+| **Learning System** | Convergence study (Exp 6, 10 gens, 5 seeds) · Feedback loop and policy synthesis |
 """)

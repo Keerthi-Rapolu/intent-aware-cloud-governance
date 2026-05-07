@@ -169,6 +169,41 @@ def ibd_roc_scatter(m: dict) -> go.Figure:
     return fig
 
 
+def confusion_matrix_heatmap(m: dict, detector: str = "ifs") -> go.Figure:
+    """2×2 annotated confusion matrix for a given detector ('ifs' or 'threshold')."""
+    dm = m[detector]
+    tp, fp, tn, fn = dm["tp"], dm["fp"], dm["tn"], dm["fn"]
+    z = [[tn, fp], [fn, tp]]
+    cell_labels = [["TN", "FP"], ["FN", "TP"]]
+
+    annotations = []
+    for r, row in enumerate(z):
+        for c, val in enumerate(row):
+            annotations.append(dict(
+                x=c, y=r,
+                text=f"<b>{cell_labels[r][c]}</b><br>{val:,}",
+                showarrow=False, font=dict(size=14, color="white"),
+                xref="x", yref="y",
+            ))
+
+    fig = go.Figure(go.Heatmap(
+        z=z,
+        colorscale=[[0.0, "#d62728"], [0.5, "#ff7f0e"], [1.0, "#2ca02c"]],
+        showscale=False,
+        xgap=4, ygap=4,
+    ))
+    fig.update_layout(
+        xaxis=dict(tickvals=[0, 1], ticktext=["Predicted Normal", "Predicted Anomaly"],
+                   side="top"),
+        yaxis=dict(tickvals=[0, 1], ticktext=["Actual Normal", "Actual Anomaly"],
+                   autorange="reversed"),
+        annotations=annotations,
+        margin=dict(t=60, b=20, l=110, r=20),
+        height=260,
+    )
+    return fig
+
+
 def root_cause_donut(df: pd.DataFrame) -> go.Figure:
     """Donut: IBD root cause breakdown by count."""
     colors = [ROOT_CAUSE_COLORS.get(rc, "#7f7f7f") for rc in df["root_cause"]]
