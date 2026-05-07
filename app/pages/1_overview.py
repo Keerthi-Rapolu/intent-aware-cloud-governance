@@ -1,4 +1,4 @@
-"""Page 1 — System Overview: KPIs, architecture, comparison, research positioning."""
+"""Page 1 — System Overview: architecture, KPIs, comparison, research positioning."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -9,133 +9,299 @@ from components.data_loader import load_kpis
 
 st.set_page_config(page_title="Overview — PBCP", layout="wide")
 
+# Research identity bar
+st.markdown("""
+<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+            text-transform: uppercase; color: #38BDF8; margin-bottom: 6px;">
+  Cloud Systems Research &nbsp;·&nbsp; IACG v2.0
+</div>
+""", unsafe_allow_html=True)
+
 st.title("PBCP — Pre-Billing Cost Prevention Framework")
-st.caption(
-    "IACG v2.0 Research System · Keerthi Rapolu · "
-    "Controlled evaluation benchmark: seed 42, 500 workloads, 28,423 runs"
+st.markdown(
+    "An intent-aware cloud governance system that intercepts compute waste "
+    "**before** billing using hybrid NLP, FAISS KNN similarity retrieval, "
+    "and an expected-value intervention model."
 )
 
-st.info(
-    "**Research prototype.**  "
-    "All experiments run over a controlled evaluation workload benchmark "
-    "(500 workloads, 28,423 simulated runs, seed 42). "
-    "Utilization priors are KNN over this benchmark; cost figures use published "
-    "AWS/Azure/GCP on-demand pricing. Production deployment would require "
-    "calibration against an organization's own historical run data.",
-    icon="ℹ️",
-)
+st.markdown("""
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 20px 0;">
+  <span class="badge badge-sim">Simulated Benchmark</span>
+  <span class="badge badge-proto">Research Prototype</span>
+  <span class="badge badge-price">Published Cloud Pricing</span>
+  <span class="badge badge-warn">Controlled Anomaly Injection</span>
+</div>
+""", unsafe_allow_html=True)
 
 # -- KPIs -------------------------------------------------------------------
 kpis = load_kpis()
 
 c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Workloads",        "500",
+c1.metric("Benchmark Workloads", "500",
           help="Controlled evaluation benchmark · seed 42")
-c2.metric("Total Prevented",  f"${kpis['total_prevented']:,.0f}",
+c2.metric("Total Cost Prevented", f"${kpis['total_prevented']:,.0f}",
           help="Sum of prevented_cost_usd across all non-baseline intervention records")
-c3.metric("System CPS",       f"{kpis['system_cps']:.3f}",
-          help="prevented_cost / potential_cost (Cost Prevention Score)")
-c4.metric("Mean IFS",         f"{kpis['mean_ifs']:.3f}",
-          help="Intent-Fit Score: 0–1, higher = declared intent matched runtime behavior")
-c5.metric("IBD Rate",         f"{kpis['ibd_fraction']*100:.1f}%",
-          help="Fraction of workloads with IFS < 0.70 (Intent-Behavior Discrepancy)")
+c3.metric("System CPS", f"{kpis['system_cps']:.3f}",
+          help="Cost Prevention Score = prevented / potential")
+c4.metric("Mean IFS", f"{kpis['mean_ifs']:.3f}",
+          help="Intent-Fit Score: 0–1, higher = intent aligned with behavior")
+c5.metric("IBD Rate", f"{kpis['ibd_fraction']*100:.0f}%",
+          help="Fraction of workloads with IFS < 0.65 (controlled injection)")
+
+st.caption(
+    "Benchmark includes controlled anomaly injection to evaluate governance "
+    "effectiveness under realistic cloud waste scenarios."
+)
 
 st.divider()
 
-# -- Architecture + Problem -------------------------------------------------
-col_arch, col_desc = st.columns([1, 1])
+# ── Architecture ────────────────────────────────────────────────────────────
+st.subheader("System Architecture")
+st.caption("Three-phase intent-aware governance pipeline.")
 
-with col_arch:
-    st.subheader("System Architecture")
-    st.code("""
-  Workload Description (NL)
-          |
-          v
-  [Intent Inference]        FAISS KNN + catalog priors
-          |                 Hybrid: keyword + DistilBERT
-          v
-  [Pre-Execution Simulator] EV decision model
-          |                 BLOCK / AUTO_CORRECT / SUGGEST / PASS
-          v
-  [Pre-Provision Guard]     Policy enforcement
-          |
-          v
-  [Runtime Optimizer]       cpu_underutil | idle | overrun
-          |
-          v
-  [CPS + IFS Tracker]       Cost Prevention × Intent-Fit
-    """, language="text")
+arch_col1, arch_col2, arch_col3 = st.columns(3)
 
-with col_desc:
+with arch_col1:
+    st.markdown("""
+<div class="phase-block">
+  <div class="phase-title" style="color: #38BDF8;">
+    Phase 1 &nbsp;·&nbsp; PREVENT
+  </div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#38BDF8;"></div>
+    <div><b style="color:#E2E8F0;">Natural Language Workload</b><br>
+    Job description submitted via CLI, API, or scheduler integration</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#38BDF8;"></div>
+    <div><b style="color:#E2E8F0;">Intent Inference</b><br>
+    Hybrid NLP: deterministic keyword extraction → DistilBERT (optional)</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#38BDF8;"></div>
+    <div><b style="color:#E2E8F0;">FAISS KNN Retrieval</b><br>
+    64-dim workload embeddings, cosine similarity over historical runs</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#38BDF8;"></div>
+    <div><b style="color:#E2E8F0;">Pre-Execution Simulation</b><br>
+    Predicts utilization · right-sizes node count · computes cost delta</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#38BDF8;"></div>
+    <div><b style="color:#E2E8F0;">EV Decision Engine</b><br>
+    Maximises E[savings − correction_cost] per intervention option</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+    <span style="background:rgba(239,68,68,0.18); color:#EF4444; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:700;">BLOCK</span>
+    <span style="background:rgba(16,185,129,0.18); color:#10B981; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:700;">AUTO_CORRECT</span>
+    <span style="background:rgba(245,158,11,0.18); color:#F59E0B; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:700;">SUGGEST</span>
+    <span style="background:rgba(56,189,248,0.18); color:#38BDF8; padding:3px 9px;
+                 border-radius:6px; font-size:12px; font-weight:700;">PASS</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+with arch_col2:
+    st.markdown("""
+<div class="phase-block">
+  <div class="phase-title" style="color: #10B981;">
+    Phase 2 &nbsp;·&nbsp; CORRECT
+  </div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#10B981;"></div>
+    <div><b style="color:#E2E8F0;">Runtime Monitoring</b><br>
+    Continuous telemetry ingestion: CPU, memory, network, idle time</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#10B981;"></div>
+    <div><b style="color:#E2E8F0;">Anomaly Signals</b><br>
+    Idle cluster detection · utilization underrun · runtime overrun</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#10B981;"></div>
+    <div><b style="color:#E2E8F0;">Runtime Optimizer</b><br>
+    Mid-execution right-sizing decisions with EV model re-evaluation</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#10B981;"></div>
+    <div><b style="color:#E2E8F0;">Intervention Actions</b><br>
+    Node downscale · spot migration · graceful job termination</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#10B981;"></div>
+    <div><b style="color:#E2E8F0;">CPS Computation</b><br>
+    CPS = prevented / potential · ESR multiplier for gaming resistance</div>
+  </div>
+
+  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(16,185,129,0.08);
+              border-radius: 8px; border: 1px solid rgba(16,185,129,0.2);">
+    <div style="font-size: 12px; color: #34D399; font-weight: 700;">Exp 2 Scenario C Result</div>
+    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">
+      Runaway ML job · 20 → 9 nodes<br>$97.92 prevented · CPS 0.667
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+with arch_col3:
+    st.markdown("""
+<div class="phase-block">
+  <div class="phase-title" style="color: #8B5CF6;">
+    Phase 3 &nbsp;·&nbsp; LEARN
+  </div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
+    <div><b style="color:#E2E8F0;">IFS Computation</b><br>
+    Alignment score from workload embedding similarity to behavior embedding</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
+    <div><b style="color:#E2E8F0;">Intent-Behavior Divergence Detection</b><br>
+    IFS &lt; 0.65 triggers anomaly classification and root-cause attribution</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
+    <div><b style="color:#E2E8F0;">Policy Synthesis</b><br>
+    Recurring failure patterns (≥ 3 occurrences) trigger automated rule generation</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
+    <div><b style="color:#E2E8F0;">Embedding Updates</b><br>
+    Prior distributions updated with new behavioral evidence</div>
+  </div>
+  <div class="phase-arrow">↓</div>
+
+  <div class="phase-step">
+    <div class="phase-step-dot" style="background:#8B5CF6;"></div>
+    <div><b style="color:#E2E8F0;">Convergence Improvement</b><br>
+    CPS improves across generations · Exp 6: peak 0.733, 58× vs no-Phase-3</div>
+  </div>
+
+  <div style="margin-top: 16px; padding: 10px 12px; background: rgba(139,92,246,0.08);
+              border-radius: 8px; border: 1px solid rgba(139,92,246,0.2);">
+    <div style="font-size: 12px; color: #A78BFA; font-weight: 700;">IBD Detection Result (Exp 3)</div>
+    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px;">
+      IFS detector F1 = 0.761<br>CPU-threshold baseline F1 = 0.605
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
+
+# -- Problem + IFS note --------------------------------------------------------
+col_prob, col_ifs = st.columns(2)
+
+with col_prob:
     st.subheader("Problem Statement")
     st.markdown("""
-Cloud compute waste from over-provisioning is largely invisible until the billing cycle closes.
-Workloads are submitted requesting 20 nodes when 6 would suffice — the excess runs idle,
-billed at full rate, with no retroactive remedy.
+Cloud compute waste from over-provisioning remains largely invisible until the billing cycle
+closes. Workloads are submitted requesting 20 nodes when 6 would suffice — the excess
+runs idle, billed at the full on-demand rate, with no retroactive remedy available.
 
-**PBCP intercepts this before billing:**
-- Infers the true workload type from natural-language job descriptions
-- Predicts utilization using KNN over historical runs (FAISS, 64-dim embeddings)
-- Right-sizes node counts via an EV decision model that weighs correction risk
-- Applies policy guardrails and runtime corrections
-- Tracks CPS (Cost Prevention Score) and IFS (Intent-Fit Score) as governance metrics
+**Three compounding failure modes:**
+- **Over-provisioning**: node count exceeds utilization requirements (primary waste driver)
+- **Type mislabeling**: workloads declared as `adhoc` actually exhibit `ml_training` resource patterns, bypassing appropriate guardrails
+- **Runaway execution**: jobs run 5–10× longer than declared, accumulating unbounded cost
+
+**PBCP's approach:** intercept all three failure modes before billing through a combination of
+intent inference, predictive simulation, and policy enforcement — rather than post-hoc analysis.
     """)
 
-    st.subheader("Key Experimental Results")
+with col_ifs:
+    st.subheader("IFS: Intent-Fit Score")
     st.markdown("""
-| Experiment | Metric | Result |
-|-----------|--------|--------|
-| Calibration (Exp 0) | Util MAE / Cost rel-RMSE | 0.054 / 0.306† |
-| Pre-Provision (Exp 1) | Showcase CPS | 0.500 (20 → 10 nodes) |
-| Runtime (Exp 2) | Scenario C cost prevented | $97.92 |
-| IBD Detection (Exp 3) | IFS detector F1 vs CPU-threshold | 0.761 vs 0.605 |
-| System Roll-up (Exp 5) | Valid CPS · ESR | 0.559 · 0.981 |
-| Convergence (Exp 6) | Peak CPS vs no-phase-3 | 0.733 vs 0.013 |
+**Canonical definition:** IFS is computed as the cosine similarity between a workload's
+_intent embedding_ (derived from the natural-language job description) and its
+_behavior embedding_ (derived from observed runtime telemetry).
 
-† Cost rel-RMSE reflects duration uncertainty: the simulator predicts cost at submission time using
-expected duration; actual cost depends on runtime duration (±25% variation by design).
-Pre-execution cost prediction inherently carries this uncertainty; 0.306 is within the expected
-range for submission-time models.
+**Interpretability decomposition:** For dashboard transparency, the system surfaces four
+alignment sub-scores that contribute to the overall embedding alignment:
+
+| Sub-score | Weight | Captures |
+|-----------|--------|----------|
+| Type alignment | 0.35 | Declared vs. inferred workload class |
+| Utilization alignment | 0.25 | Predicted vs. actual CPU utilization |
+| Duration alignment | 0.20 | Expected vs. actual job duration |
+| Resource alignment | 0.20 | Over-provision factor |
+
+> Displayed sub-scores are interpretable components contributing to the
+> embedding-based IFS calculation. They are not the canonical research definition.
+
+**Thresholds:** well-aligned ≥ 0.85 · minor ≥ 0.70 · significant ≥ 0.50 · severe < 0.50 · IBD alert < 0.65
     """)
 
 st.divider()
 
-# -- Comparison table -------------------------------------------------------
+# -- Comparison table ----------------------------------------------------------
 st.subheader("PBCP vs. Existing Approaches")
 st.markdown("""
-| Capability | PBCP | Sedai¹ | AWS Compute Optimizer² |
-|------------|------|--------|------------------------|
-| Intercepts before any resource is provisioned | **Yes** | No — corrects live utilization | No — retrospective recommendations |
+| Capability | PBCP | Sedai | AWS Compute Optimizer |
+|------------|------|-------|----------------------|
+| Intercepts waste **before** any resource is provisioned | **Yes** | No — corrects live resources | No — retrospective advisory |
 | Governance grounded in natural-language intent | **Yes** | No | No |
 | KNN workload-similarity priors (FAISS) | **Yes** | No | No |
-| Decision-theoretic intervention (EV model) | **Yes** | No | No |
+| Decision-theoretic EV intervention model | **Yes** | No | No |
 | Intent-Fit Score (IFS) alignment metric | **Yes** | No | No |
 | Runtime corrections | **Yes** | Yes | Advisory only |
 | Multi-cloud (AWS / Azure / GCP) | **Yes** | Yes | AWS only |
-| Gaming-resistant metric (CPS × ESR) | **Yes** | No | No |
+| Gaming-resistant Valid CPS (CPS × ESR) | **Yes** | No | No |
+| Self-improving policy synthesis (Phase 3) | **Yes** | No | No |
 
-¹ Sedai autonomously right-sizes live resources (post-execution). Pre-billing interception is out of scope by design.
-² AWS Compute Optimizer analyzes up to 14 days of historical utilization and produces advisory recommendations; no enforcement mechanism.
+Sedai autonomously right-sizes live resources (post-execution); pre-billing interception is out of
+scope by design. AWS Compute Optimizer analyzes up to 14 days of historical utilization and produces
+advisory recommendations with no enforcement mechanism.
 """)
 
 st.divider()
 
-# -- Metric definitions -----------------------------------------------------
+# -- Metric definitions --------------------------------------------------------
 with st.expander("Metric definitions"):
     st.markdown("""
-**CPS (Cost Prevention Score)** = `prevented_cost / potential_cost_without_system` (0–1, higher is better).
+**CPS (Cost Prevention Score)** = `prevented_cost / potential_cost_without_system` (0–1).
 Fraction of wasteful spend intercepted before billing.
 
-**Valid CPS** = `CPS × ESR` where ESR (Execution Success Rate) = fraction of workloads that completed
-successfully. ESR makes CPS gaming-resistant: a system that blocks aggressively earns low ESR and
-therefore low Valid CPS regardless of savings claimed.
+**Valid CPS** = `CPS × ESR`. ESR (Execution Success Rate) = fraction of workloads that completed
+successfully. Penalizes over-aggressive blocking to prevent gaming.
 
-**IFS (Intent-Fit Score)** = `0.35 × type_alignment + 0.25 × util_alignment + 0.20 × duration_alignment
-+ 0.20 × resource_alignment` (0–1, higher is better). Measures how well a workload's declared intent
-matched its observed runtime behavior.
+**IFS (Intent-Fit Score)** — see sub-score decomposition above. Canonical: cosine similarity
+between intent and behavior embeddings.
 
-Categories: well_aligned ≥ 0.85 · minor ≥ 0.70 · significant ≥ 0.50 · severe < 0.50.
+**IBD (Intent-Behavior Discrepancy)**: IFS < 0.65 — divergence sufficient to trigger the
+anomaly detector and initiate root-cause attribution.
 
-**IBD (Intent-Behavior Discrepancy)**: IFS < 0.70 — declared intent and actual behavior diverged enough
-to warrant a governance alert.
+**Note on benchmark IFS distribution:** The controlled evaluation benchmark injects anomalies
+at a rate calibrated to stress-test detection sensitivity. Production IBD rates would reflect
+actual organizational behavior, not injected faults.
     """)

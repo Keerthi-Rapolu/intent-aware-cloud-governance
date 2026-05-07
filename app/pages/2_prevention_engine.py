@@ -22,6 +22,20 @@ tab_demo, tab_catalogue, tab_anomaly = st.tabs(
     ["Live Demo", "Workload Catalogue", "Anomaly Detection"]
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CHART THEME CONSTANTS (keep dark)
+# ─────────────────────────────────────────────────────────────────────────────
+_BG, _BG2, _GRID, _TEXT = "#0D1117", "#161B27", "rgba(255,255,255,0.06)", "#94A3B8"
+
+INT_COLOR_MAP = {
+    "BLOCK":        "#EF4444",
+    "AUTO_CORRECT": "#10B981",
+    "SUGGEST":      "#F59E0B",
+    "PASS":         "#38BDF8",
+}
+INT_CSS_CLASS = {"BLOCK": "blk", "AUTO_CORRECT": "ac", "SUGGEST": "sug", "PASS": "pas"}
+
+
 # ============================================================
 # TAB 1 — LIVE DEMO
 # ============================================================
@@ -30,86 +44,66 @@ with tab_demo:
         "Enter a workload description to see intent inference, pre-execution simulation, "
         "and Intent-Fit Score in real time."
     )
-    st.info(
-        "**Research prototype — controlled evaluation priors.** "
-        "Utilization predictions use KNN over a 500-workload benchmark dataset "
-        "(controlled anomaly injection, not production telemetry). "
-        "Cost figures use published AWS/Azure/GCP on-demand rates.",
-        icon="ℹ️",
+    st.markdown("""
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+  <span class="badge badge-sim">Controlled Benchmark Priors</span>
+  <span class="badge badge-price">Published Cloud Pricing</span>
+  <span class="badge badge-proto">Research Prototype</span>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Showcase scenario cards ───────────────────────────────────────────────
+    st.markdown("#### Showcase Scenarios")
+    st.caption(
+        "Three preset scenarios illustrate the full intervention spectrum: "
+        "aggressive correction, moderate optimization, and intelligent non-intervention."
     )
 
-    # -- Preset buttons -------------------------------------------------------
-    PRESETS = {
-        "ETL Pipeline": (
-            "Nightly billing reconciliation ETL on 500 GB Parquet files "
-            "from S3 into Redshift — includes PII customer payment records",
-            "etl",
-        ),
-        "ML Training": (
-            "Weekly customer churn model retraining on 3 TB Spark ML dataset "
-            "with PII records — hyperparameter search via XGBoost",
-            "ml_training",
-        ),
-        "Streaming Job": (
-            "Real-time fraud monitoring Kafka stream with tumbling 60-second "
-            "windows — continuous processing of live payment transaction events",
-            "streaming",
-        ),
-        "LLM Pipeline": (
-            "Batch RAG pipeline for customer support summarization — embedding "
-            "500K documents into FAISS vector store via OpenAI API completions",
-            "llm_pipeline",
-        ),
-        "Adhoc Analytics": (
-            "One-off exploratory analysis of Q2 marketing campaign performance "
-            "across customer segments — ad-hoc query on 200 GB transaction data",
-            "adhoc",
-        ),
-    }
+    sc1, sc2, sc3 = st.columns(3)
+    with sc1:
+        st.markdown("""
+<div class="iv-card ac">
+  <h4>High-Impact Correction</h4>
+  <p><span class="highlight">customer-churn-weekly</span></p>
+  <p>32 nodes requested · 24% predicted utilization</p>
+  <p>Spark ML · 3 TB dataset · PII</p>
+  <p style="margin-top:8px; color:#10B981; font-weight:700;">
+    AUTO_CORRECT → 9 nodes<br>$382 prevented · CPS 0.719
+  </p>
+</div>
+""", unsafe_allow_html=True)
 
-    if "demo_desc" not in st.session_state:
-        st.session_state.demo_desc = ""
-    if "demo_type" not in st.session_state:
-        st.session_state.demo_type = "ml_training"
+    with sc2:
+        st.markdown("""
+<div class="iv-card sug">
+  <h4>Moderate Optimization</h4>
+  <p><span class="highlight">billing-reconciliation-nightly</span></p>
+  <p>16 nodes requested · 51% predicted utilization</p>
+  <p>ETL · 500 GB Parquet · nightly window</p>
+  <p style="margin-top:8px; color:#F59E0B; font-weight:700;">
+    SUGGEST → 11 nodes<br>$40 estimated savings · CPS 0.312
+  </p>
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("**Quick-start presets:**")
-    pcols = st.columns(len(PRESETS))
-    for col, (label, (desc, wtype)) in zip(pcols, PRESETS.items()):
-        if col.button(label, key=f"preset_{label}", use_container_width=True):
-            st.session_state.demo_desc  = desc
-            st.session_state.demo_type  = wtype
+    with sc3:
+        st.markdown("""
+<div class="iv-card pas">
+  <h4>Well-Aligned Workload</h4>
+  <p><span class="highlight">fraud-stream-monitor</span></p>
+  <p>6 nodes requested · 82% predicted utilization</p>
+  <p>Streaming · Kafka · autoscaling enabled</p>
+  <p style="margin-top:8px; color:#38BDF8; font-weight:700;">
+    PASS · No intervention required<br>IFS 0.921 · well-aligned
+  </p>
+</div>
+""", unsafe_allow_html=True)
 
-    # -- Input form -----------------------------------------------------------
-    col_in, col_cfg = st.columns([2, 1])
+    st.divider()
 
-    with col_in:
-        description = st.text_area(
-            "Workload description",
-            value=st.session_state.demo_desc,
-            height=120,
-            placeholder="e.g., weekly customer churn model retraining on 3 TB dataset with PII",
-        )
-
-    type_options = ["etl", "adhoc", "ml_training", "llm_pipeline", "batch", "streaming"]
-    default_idx  = type_options.index(st.session_state.demo_type) if st.session_state.demo_type in type_options else 2
-
-    with col_cfg:
-        declared_type = st.selectbox("Declared workload type", type_options, index=default_idx)
-        cloud    = st.selectbox("Cloud provider", ["aws", "azure", "gcp"])
-        instance = st.selectbox(
-            "Instance type",
-            ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "p3.2xlarge", "r5.xlarge", "c5.xlarge"],
-        )
-        nodes    = st.slider("Node count",      min_value=1,   max_value=50,  value=20)
-        duration = st.slider("Expected hours",  min_value=0.5, max_value=24.0, value=8.0, step=0.5)
-        priority = st.selectbox("Priority", ["low", "medium", "high", "critical"], index=1)
-        use_spot = st.checkbox("Use spot instances", value=False)
-
-    run_btn = st.button("Simulate", type="primary")
-
-    # -- Pipeline availability check ------------------------------------------
+    # ── Pipeline availability check ──────────────────────────────────────────
     try:
-        from intent_model.intent_inference import IntentInferenceEngine  # noqa: F401
+        from intent_model.intent_inference import IntentInferenceEngine
         _PIPELINE_AVAILABLE = True
     except Exception:
         _PIPELINE_AVAILABLE = False
@@ -117,9 +111,9 @@ with tab_demo:
     if not _PIPELINE_AVAILABLE:
         st.warning(
             "**Live pipeline requires local installation.**  "
-            "The ML models (DistilBERT, FAISS index) are not deployed to Streamlit Cloud "
+            "DistilBERT and FAISS models are not deployed to Streamlit Cloud "
             "due to size constraints.  \n\n"
-            "To run locally:\n"
+            "To run the full pipeline locally:\n"
             "```bash\n"
             "git clone https://github.com/Keerthi-Rapolu/intent-aware-cloud-governance\n"
             "pip install -r requirements.txt\n"
@@ -128,8 +122,11 @@ with tab_demo:
             "```"
         )
         st.divider()
-        st.subheader("Example Output — Exp 2 Scenario C (runaway ML job)")
-        st.success("AUTO_CORRECT — nodes reduced 20 → 9 | cost prevented $97.92 | CPS 0.667")
+
+        st.subheader("Example Output — Exp 2 Scenario C (Runaway ML Job)")
+        st.success(
+            "AUTO_CORRECT — nodes reduced 20 → 9 | cost prevented $97.92 | CPS 0.667"
+        )
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Intervention",   "AUTO_CORRECT")
         c2.metric("Optimal nodes",  "9 / 20 submitted")
@@ -137,17 +134,17 @@ with tab_demo:
         c4.metric("CPS",            "0.667")
 
         st.divider()
-        st.subheader("Intent-Fit Score (IFS) — Example")
+        st.subheader("Intent-Fit Score — Example")
         st.caption(
-            "IFS measures alignment between declared intent and predicted behaviour (0–1). "
-            "Below 0.65 triggers the anomaly detector. "
-            "Score is the weighted average of 4 alignment sub-scores."
+            "IFS measures alignment between the workload's declared intent and its "
+            "predicted runtime behavior. Displayed sub-scores are interpretable "
+            "components contributing to the embedding-based IFS calculation."
         )
         ec1, ec2, ec3 = st.columns(3)
-        ec1.metric("IFS",           "0.712",
+        ec1.metric("IFS",          "0.712",
                    help="Weighted: 0.35×type + 0.25×util + 0.20×duration + 0.20×resource")
-        ec2.metric("Category",      "minor")
-        ec3.metric("Anomaly flag",  "No (above 0.65 threshold)")
+        ec2.metric("Category",     "minor")
+        ec3.metric("Anomaly flag", "No (above 0.65 threshold)")
 
         example_sub = {
             "Job Type\nAlignment":    0.85,
@@ -155,23 +152,105 @@ with tab_demo:
             "Duration\nAlignment":    0.70,
             "Resource\nAlignment":    0.68,
         }
-        bar_colors = ["#d62728" if v < 0.50 else "#ff7f0e" if v < 0.70 else "#2ca02c"
-                      for v in example_sub.values()]
+        _bar_c = ["#EF4444" if v < 0.50 else "#F59E0B" if v < 0.70 else "#10B981"
+                  for v in example_sub.values()]
         eg_fig = go.Figure(go.Bar(
             x=list(example_sub.keys()), y=list(example_sub.values()),
-            marker_color=bar_colors,
+            marker_color=_bar_c,
             text=[f"{v:.3f}" for v in example_sub.values()],
             textposition="outside",
         ))
-        eg_fig.add_hline(y=0.65, line_dash="dash", line_color="red", line_width=1.5,
-                         annotation_text="Alert threshold (0.65)", annotation_position="top right",
-                         annotation_font_color="red")
+        eg_fig.add_hline(y=0.65, line_dash="dash", line_color="#EF4444", line_width=1.5,
+                         annotation_text="Alert threshold (0.65)",
+                         annotation_position="top right",
+                         annotation_font_color="#EF4444")
         eg_fig.update_layout(
-            yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor="#f0f0f0"),
-            plot_bgcolor="white", margin=dict(t=30, b=10), showlegend=False,
+            yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor=_GRID),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2,
+            font=dict(color=_TEXT),
+            margin=dict(t=30, b=10), showlegend=False,
         )
         st.plotly_chart(eg_fig, use_container_width=True)
         st.stop()
+
+    # ── Preset buttons ────────────────────────────────────────────────────────
+    PRESETS = {
+        "High Impact — ML Training": (
+            "Weekly customer churn model retraining on 3 TB Spark ML dataset "
+            "with PII records — hyperparameter search, XGBoost, distributed training",
+            "ml_training", 32,
+        ),
+        "Moderate — Nightly ETL": (
+            "Nightly billing reconciliation ETL on 500 GB Parquet files from S3 "
+            "into Redshift — includes PII customer payment records, scheduled 02:00 UTC",
+            "etl", 16,
+        ),
+        "Well-Aligned — Streaming": (
+            "Real-time fraud monitoring Kafka stream with tumbling 60-second windows "
+            "— continuous processing of live payment events, autoscaling enabled",
+            "streaming", 6,
+        ),
+        "LLM Pipeline": (
+            "Batch RAG pipeline for customer support summarization — embedding "
+            "500K documents into FAISS vector store via OpenAI API completions",
+            "llm_pipeline", 12,
+        ),
+        "Adhoc Analytics": (
+            "One-off exploratory analysis of Q2 marketing campaign performance "
+            "across customer segments — ad-hoc query on 200 GB transaction data",
+            "adhoc", 10,
+        ),
+    }
+
+    if "demo_desc" not in st.session_state:
+        st.session_state.demo_desc = ""
+    if "demo_type" not in st.session_state:
+        st.session_state.demo_type = "ml_training"
+    if "demo_nodes" not in st.session_state:
+        st.session_state.demo_nodes = 32
+
+    st.markdown("**Quick-start presets:**")
+    pcols = st.columns(len(PRESETS))
+    for col, (label, (desc, wtype, node_default)) in zip(pcols, PRESETS.items()):
+        if col.button(label, key=f"preset_{label}", use_container_width=True):
+            st.session_state.demo_desc  = desc
+            st.session_state.demo_type  = wtype
+            st.session_state.demo_nodes = node_default
+
+    # ── Input form ────────────────────────────────────────────────────────────
+    col_in, col_cfg = st.columns([2, 1])
+
+    with col_in:
+        description = st.text_area(
+            "Workload description",
+            value=st.session_state.demo_desc,
+            height=120,
+            placeholder=(
+                "e.g., weekly customer churn model retraining on 3 TB dataset "
+                "with PII — Spark ML, XGBoost"
+            ),
+        )
+
+    type_options = ["etl", "adhoc", "ml_training", "llm_pipeline", "batch", "streaming"]
+    default_idx  = (type_options.index(st.session_state.demo_type)
+                    if st.session_state.demo_type in type_options else 2)
+
+    with col_cfg:
+        declared_type = st.selectbox("Declared workload type", type_options, index=default_idx)
+        cloud    = st.selectbox("Cloud provider", ["aws", "azure", "gcp"])
+        instance = st.selectbox(
+            "Instance type",
+            ["m5.xlarge", "m5.2xlarge", "m5.4xlarge", "p3.2xlarge",
+             "r5.xlarge", "c5.xlarge"],
+        )
+        nodes    = st.slider("Node count",     min_value=1,   max_value=50,
+                             value=st.session_state.demo_nodes)
+        duration = st.slider("Expected hours", min_value=0.5, max_value=24.0,
+                             value=8.0, step=0.5)
+        priority = st.selectbox("Priority", ["low", "medium", "high", "critical"], index=1)
+        use_spot = st.checkbox("Use spot instances", value=False)
+
+    run_btn = st.button("Simulate", type="primary")
 
     if not run_btn:
         st.info("Fill in the fields above and click **Simulate**.")
@@ -181,7 +260,7 @@ with tab_demo:
         st.warning("Enter a workload description to run the simulation.")
         st.stop()
 
-    # -- Run pipeline ---------------------------------------------------------
+    # ── Run pipeline ──────────────────────────────────────────────────────────
     with st.spinner("Running PBCP pipeline..."):
         try:
             from simulation_engine.simulator import PreExecutionSimulator
@@ -226,11 +305,9 @@ with tab_demo:
     if not ok:
         st.stop()
 
-    # -- Results --------------------------------------------------------------
+    # ── Results ───────────────────────────────────────────────────────────────
     st.divider()
-
-    INT_COLOR = {"BLOCK": "red", "AUTO_CORRECT": "green", "SUGGEST": "orange", "PASS": "blue"}
-    color = INT_COLOR.get(sim.intervention, "grey")
+    color = INT_COLOR_MAP.get(sim.intervention, "#94A3B8")
 
     if sim.intervention == "AUTO_CORRECT":
         st.success(
@@ -238,45 +315,56 @@ with tab_demo:
             f"| cost prevented ${sim.prevented_cost_usd:.2f} | CPS {sim.cps:.3f}"
         )
     elif sim.intervention == "BLOCK":
-        st.error(f"BLOCK — submission rejected | potential waste ${sim.prevented_cost_usd:.2f}")
+        st.error(
+            f"BLOCK — submission rejected | potential waste ${sim.prevented_cost_usd:.2f}"
+        )
     elif sim.intervention == "SUGGEST":
         st.warning(
-            f"SUGGEST — predicted utilization ({sim.predicted_utilization:.0%}) suggests "
+            f"SUGGEST — predicted utilization ({sim.predicted_utilization:.0%}) indicates "
             f"{sim.optimal_nodes} nodes would suffice vs {nodes} submitted. "
-            f"EV favours suggestion over forced correction (EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
+            f"EV model favors suggestion over forced correction "
+            f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
         )
     else:
         if inferred.type_mismatch:
             st.info(
-                f"PASS — workload type mismatch detected (declared: {declared_type}, "
-                f"inferred: {inferred.workload_type_inferred}), but EV model determined "
-                f"correction cost exceeds expected waste "
-                f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f}). No intervention is net-positive."
+                f"PASS — workload type divergence detected "
+                f"(declared: {declared_type}, inferred: {inferred.workload_type_inferred}), "
+                f"but EV model determines correction cost exceeds expected waste "
+                f"(EV_AUTO_CORRECT = {sim.ev_auto_correct:.1f})."
             )
         else:
-            st.info("PASS — no intervention required (utilization healthy, no type mismatch detected)")
+            st.info("PASS — no intervention required (utilization healthy, no type mismatch)")
 
-    # Before / After comparison cards
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Intervention",   sim.intervention)
     c2.metric("Optimal nodes",  f"{sim.optimal_nodes} / {nodes} submitted")
     c3.metric("Cost prevented", f"${sim.prevented_cost_usd:.2f}")
     c4.metric("CPS",            f"{sim.cps:.3f}")
 
+    # Before / After cards
     st.divider()
     col_before, col_after = st.columns(2)
     with col_before:
-        st.markdown("##### As submitted")
-        st.metric("Nodes",            nodes)
-        st.metric("Projected cost",   f"${static_cost:.2f}",
-                  help="Cost if submitted configuration runs unmodified")
+        st.markdown("""
+<div style="font-size:11px; font-weight:700; letter-spacing:0.08em;
+            text-transform:uppercase; color:#475569; margin-bottom:8px;">
+As Submitted
+</div>""", unsafe_allow_html=True)
+        st.metric("Node count",        nodes)
+        st.metric("Projected cost",    f"${static_cost:.2f}",
+                  help="Cost at submitted configuration, unmodified")
+
     with col_after:
-        st.markdown("##### After PBCP intervention")
+        st.markdown(f"""
+<div style="font-size:11px; font-weight:700; letter-spacing:0.08em;
+            text-transform:uppercase; color:{color}; margin-bottom:8px;">
+After PBCP Intervention
+</div>""", unsafe_allow_html=True)
         st.metric("Optimal nodes",    sim.optimal_nodes,
                   delta=f"{sim.optimal_nodes - nodes:+d} node adjustment")
         st.metric("Right-sized cost", f"${sim.right_sized_cost_usd:.2f}",
-                  delta=f"-${sim.prevented_cost_usd:.2f}",
-                  delta_color="inverse")
+                  delta=f"-${sim.prevented_cost_usd:.2f}", delta_color="inverse")
 
     st.divider()
     col_l, col_r = st.columns(2)
@@ -309,46 +397,57 @@ with tab_demo:
             "ev_block":              sim.ev_block,
         })
 
-    # -- IFS gauge + sub-scores -----------------------------------------------
+    # ── IFS gauge + sub-scores ────────────────────────────────────────────────
     st.divider()
     st.subheader("Intent-Fit Score (IFS)")
     st.caption(
-        "Measures alignment between the workload's declared intent and its predicted runtime "
-        "behaviour. IFS < 0.65 triggers the anomaly detector."
+        "Measures alignment between the workload's declared intent and its predicted "
+        "runtime behavior. Displayed sub-scores are interpretable components "
+        "contributing to the embedding-based IFS calculation. IFS < 0.65 triggers "
+        "the anomaly detector."
     )
 
     ifs_meta = {
-        "well_aligned": ("#2ca02c", "Well Aligned",     "Predicted behaviour matches declared intent."),
-        "minor":        ("#f0a500", "Minor Divergence",  "Small gap between intent and predicted behaviour."),
-        "significant":  ("#ff7f0e", "Significant",       "Noticeable divergence — worth investigating."),
-        "severe":       ("#d62728", "Severe Divergence", "Large divergence — workload is likely misconfigured."),
+        "well_aligned": ("#10B981", "Well Aligned",
+                         "Predicted behavior aligns with declared intent."),
+        "minor":        ("#38BDF8", "Minor Divergence",
+                         "Small gap between intent and predicted behavior."),
+        "significant":  ("#F59E0B", "Significant Divergence",
+                         "Noticeable divergence — warrants investigation."),
+        "severe":       ("#EF4444", "Severe Divergence",
+                         "Large divergence — workload is likely misconfigured."),
     }
     ifs_color, ifs_badge, verdict_msg = ifs_meta.get(
-        ifs_rec.ifs_category, ("#7f7f7f", "Unknown", "")
+        ifs_rec.ifs_category, ("#94A3B8", "Unknown", "")
     )
 
     gauge = go.Figure(go.Indicator(
         mode="gauge+number",
         value=ifs_rec.ifs,
-        number={"font": {"size": 48}, "valueformat": ".3f"},
+        number={"font": {"size": 48, "color": ifs_color}, "valueformat": ".3f"},
         gauge={
-            "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#555"},
+            "axis": {"range": [0, 1], "tickwidth": 1, "tickcolor": "#334155",
+                     "tickfont": {"color": "#94A3B8"}},
             "bar":  {"color": ifs_color, "thickness": 0.25},
+            "bgcolor": "#0D1117",
+            "borderwidth": 0,
             "steps": [
-                {"range": [0.00, 0.50], "color": "#fde8e8"},
-                {"range": [0.50, 0.70], "color": "#fef3e2"},
-                {"range": [0.70, 0.85], "color": "#e8f5e9"},
-                {"range": [0.85, 1.00], "color": "#c8e6c9"},
+                {"range": [0.00, 0.50], "color": "rgba(239,68,68,0.08)"},
+                {"range": [0.50, 0.65], "color": "rgba(245,158,11,0.08)"},
+                {"range": [0.65, 0.85], "color": "rgba(56,189,248,0.06)"},
+                {"range": [0.85, 1.00], "color": "rgba(16,185,129,0.08)"},
             ],
             "threshold": {
-                "line": {"color": "red", "width": 3},
-                "thickness": 0.8,
-                "value": 0.65,
+                "line": {"color": "#EF4444", "width": 2},
+                "thickness": 0.8, "value": 0.65,
             },
         },
-        title={"text": f"<b>{ifs_badge}</b>", "font": {"size": 18}},
+        title={"text": f"<b>{ifs_badge}</b>",
+               "font": {"size": 16, "color": ifs_color}},
     ))
-    gauge.update_layout(height=260, margin=dict(t=40, b=0, l=30, r=30))
+    gauge.update_layout(height=260, paper_bgcolor=_BG, plot_bgcolor=_BG,
+                        font=dict(color=_TEXT),
+                        margin=dict(t=40, b=0, l=30, r=30))
 
     col_gauge, col_verdict = st.columns([1, 1])
     with col_gauge:
@@ -358,10 +457,9 @@ with tab_demo:
         st.markdown(f"### {ifs_badge}")
         st.markdown(verdict_msg)
         st.markdown(
-            f"**Score:** `{ifs_rec.ifs:.3f}` &nbsp;|&nbsp; "
+            f"**Score:** `{ifs_rec.ifs:.3f}` &nbsp;·&nbsp; "
             f"**Category:** `{ifs_rec.ifs_category}`"
         )
-
         IBD_THRESHOLD = 0.65
         if ifs_rec.ifs < IBD_THRESHOLD:
             sub = {
@@ -373,37 +471,45 @@ with tab_demo:
             root_cause_label = min(sub, key=lambda k: sub[k])
             st.error(
                 f"Anomaly detector would flag this workload.  \n"
-                f"IFS {ifs_rec.ifs:.3f} is below the alert threshold of {IBD_THRESHOLD}.  \n"
-                f"Primary driver: **{root_cause_label}** (sub-score: {sub[root_cause_label]:.3f})"
+                f"IFS {ifs_rec.ifs:.3f} is below the alert threshold {IBD_THRESHOLD}.  \n"
+                f"Primary driver: **{root_cause_label}** "
+                f"(sub-score: {sub[root_cause_label]:.3f})"
             )
         else:
             st.success(
                 f"Anomaly detector: no flag.  \n"
-                f"IFS {ifs_rec.ifs:.3f} is above the alert threshold of {IBD_THRESHOLD}."
+                f"IFS {ifs_rec.ifs:.3f} is above the alert threshold {IBD_THRESHOLD}."
             )
 
     st.markdown("#### Sub-score Breakdown")
+    st.caption(
+        "Interpretable components contributing to the embedding-based IFS. "
+        "Red = primary divergence driver."
+    )
     sub_scores = {
         "Job Type\nAlignment":    ifs_rec.type_alignment,
         "Utilisation\nAlignment": ifs_rec.util_alignment,
         "Duration\nAlignment":    ifs_rec.duration_alignment,
         "Resource\nAlignment":    ifs_rec.resource_alignment,
     }
-    bar_colors = ["#d62728" if v < 0.50 else "#ff7f0e" if v < 0.70 else "#2ca02c"
+    bar_colors = ["#EF4444" if v < 0.50 else "#F59E0B" if v < 0.70 else "#10B981"
                   for v in sub_scores.values()]
     bar_fig = go.Figure(go.Bar(
         x=list(sub_scores.keys()), y=list(sub_scores.values()),
-        marker_color=bar_colors,
+        marker_color=bar_colors, opacity=0.85,
         text=[f"{v:.3f}" for v in sub_scores.values()],
         textposition="outside",
     ))
-    bar_fig.add_hline(y=0.65, line_dash="dash", line_color="red", line_width=1.5,
-                      annotation_text="Alert threshold (0.65)", annotation_position="top right",
-                      annotation_font_color="red")
+    bar_fig.add_hline(y=0.65, line_dash="dash", line_color="#EF4444", line_width=1.5,
+                      annotation_text="Alert threshold (0.65)",
+                      annotation_position="top right",
+                      annotation_font_color="#EF4444")
     bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
     bar_fig.update_layout(
-        yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor="#f0f0f0"),
-        plot_bgcolor="white", margin=dict(t=30, b=10), showlegend=False,
+        yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor=_GRID),
+        paper_bgcolor=_BG, plot_bgcolor=_BG2,
+        font=dict(color=_TEXT),
+        margin=dict(t=30, b=10), showlegend=False,
     )
     st.plotly_chart(bar_fig, use_container_width=True)
 
@@ -414,7 +520,7 @@ with tab_demo:
 with tab_catalogue:
     st.caption(
         "Controlled evaluation benchmark — 500 workloads, seed 42. "
-        "Dataset includes controlled anomaly injection for evaluation purposes."
+        "Includes controlled anomaly injection for governance evaluation."
     )
 
     df = load_workloads()
@@ -432,7 +538,6 @@ with tab_catalogue:
         "Environment", sorted(df["environment"].unique()),
         default=sorted(df["environment"].unique()),
     )
-
     col_f4, col_f5 = st.columns(2)
     over_prov = col_f4.checkbox("Over-provisioned only (OPF ≥ 1.5)")
     mismatch  = col_f5.checkbox("Type-mismatch only")
@@ -455,7 +560,7 @@ with tab_catalogue:
         if len(filt) else "—",
     )
     c3.metric(
-        "Type mismatches",
+        "Type divergence",
         f"{filt['type_mismatch'].sum()} ({filt['type_mismatch'].mean()*100:.0f}%)"
         if len(filt) else "—",
     )
@@ -473,32 +578,44 @@ with tab_catalogue:
         filt[display_cols].rename(columns={
             "workload_name": "Name", "workload_type": "Type", "team": "Team",
             "environment": "Env", "priority": "Priority", "expected_h": "Exp. h",
-            "node_count": "Nodes", "opf": "OPF", "is_over_provisioned": "Over-prov",
-            "type_mismatch": "Mismatch", "use_spot": "Spot", "instance_type": "Instance",
+            "node_count": "Nodes", "opf": "OPF",
+            "is_over_provisioned": "Over-prov",
+            "type_mismatch": "Type divergence",
+            "use_spot": "Spot", "instance_type": "Instance",
         }),
         use_container_width=True, height=420,
     )
 
-    st.divider()
-    st.subheader("Workload Detail")
     if len(filt):
+        st.divider()
+        st.subheader("Workload Detail")
         selected_name = st.selectbox(
-            "Select a workload to inspect", options=filt["workload_name"].tolist(), index=0
+            "Select a workload", options=filt["workload_name"].tolist(), index=0
         )
         if selected_name:
             row = filt[filt["workload_name"] == selected_name].iloc[0]
-            col_l, col_r = st.columns(2)
-            with col_l:
+            cl, cr = st.columns(2)
+            with cl:
                 st.markdown(f"**Description:** {row['description']}")
                 st.markdown(
-                    f"**Type:** {row['workload_type']} | **Team:** {row['team']} | "
+                    f"**Type:** {row['workload_type']} · **Team:** {row['team']} · "
                     f"**Priority:** {row['priority']}"
                 )
-                st.markdown(f"**Environment:** {row['environment']} | **Spot:** {row['use_spot']}")
-            with col_r:
-                st.markdown(f"**Nodes:** {row['node_count']} | **Instance:** {row['instance_type']}")
-                st.markdown(f"**OPF:** {row['opf']:.2f} | **Over-provisioned:** {row['is_over_provisioned']}")
-                st.markdown(f"**Type mismatch:** {row['type_mismatch']} | **PII:** {row['pii_signal']}")
+                st.markdown(
+                    f"**Environment:** {row['environment']} · **Spot:** {row['use_spot']}"
+                )
+            with cr:
+                st.markdown(
+                    f"**Nodes:** {row['node_count']} · **Instance:** {row['instance_type']}"
+                )
+                st.markdown(
+                    f"**OPF:** {row['opf']:.2f} · "
+                    f"**Over-provisioned:** {row['is_over_provisioned']}"
+                )
+                st.markdown(
+                    f"**Type divergence:** {row['type_mismatch']} · "
+                    f"**PII:** {row['pii_signal']}"
+                )
 
 
 # ============================================================
@@ -507,26 +624,23 @@ with tab_catalogue:
 with tab_anomaly:
     st.caption(
         "Exp 3 — IBD detection evaluation. "
-        "Compares the IFS-based detector against a CPU-utilization threshold baseline."
+        "Compares the IFS-based detector against a CPU-utilization threshold baseline. "
+        "Benchmark includes controlled anomaly injection for evaluation."
     )
 
-    m        = load_ibd_detector_metrics()
-    sweep    = load_ibd_threshold_sweep()
-    mismatch_df = load_ibd_mismatch_subgroup()
+    m              = load_ibd_detector_metrics()
+    sweep          = load_ibd_threshold_sweep()
+    mismatch_df    = load_ibd_mismatch_subgroup()
 
-    # KPIs
     c1, c2, c3, c4, c5 = st.columns(5)
     f1_delta = m["ifs"]["f1"] - m["threshold"]["f1"]
-    c1.metric("Total Runs Analysed",       f"{m['n_total']:,}")
-    c2.metric("Confirmed Anomalous Runs",  f"{m['n_anomaly']:,}",
+    c1.metric("Total Runs Analysed",      f"{m['n_total']:,}")
+    c2.metric("Confirmed Anomalous Runs", f"{m['n_anomaly']:,}",
               help="Runs confirmed anomalous: idle, runaway, or injected fault")
-    c3.metric("IFS Detector — F1",         f"{m['ifs']['f1']:.3f}",
-              delta=f"+{f1_delta:.3f} vs CPU threshold",
-              help="F1 balances detection rate (recall) vs false alarm rate (1−precision)")
-    c4.metric("IFS Detector — Precision",  f"{m['ifs']['precision']:.3f}",
-              help="Of flagged runs, fraction that were genuinely anomalous")
-    c5.metric("IFS Detector — Recall",     f"{m['ifs']['recall']:.3f}",
-              help="Of all anomalous runs, fraction detected")
+    c3.metric("IFS Detector — F1",        f"{m['ifs']['f1']:.3f}",
+              delta=f"+{f1_delta:.3f} vs CPU threshold")
+    c4.metric("IFS Detector — Precision", f"{m['ifs']['precision']:.3f}")
+    c5.metric("IFS Detector — Recall",    f"{m['ifs']['recall']:.3f}")
 
     mm_idx  = mismatch_df.set_index("group")
     gate_f1 = m["ifs"]["f1"] >= m["threshold"]["f1"]
@@ -535,10 +649,12 @@ with tab_anomaly:
 
     col_g1, col_g2, _ = st.columns([1, 1, 2])
     (col_g1.success if gate_f1 else col_g1.error)(
-        "IFS detector outperforms CPU baseline" if gate_f1 else "IFS detector does not outperform CPU baseline"
+        "IFS detector outperforms CPU baseline"
+        if gate_f1 else "IFS detector does not outperform CPU baseline"
     )
     (col_g2.success if gate_mm else col_g2.error)(
-        "Type-mismatch workloads fail more often" if gate_mm else "Type-mismatch signal not significant"
+        "Type-divergent workloads exhibit higher anomaly rates"
+        if gate_mm else "Type-divergence signal not significant"
     )
 
     st.divider()
@@ -549,35 +665,33 @@ with tab_anomaly:
         st.subheader("Detector Comparison")
         st.caption(
             "IFS-based detector vs CPU-utilization threshold. "
-            "Higher Precision/Recall/F1 and lower False Alarm Rate are preferred."
+            "Higher P/R/F1 and lower False Alarm Rate are preferred."
         )
         metrics = ["Precision", "Recall", "F1 Score", "False Alarm Rate"]
         basic_v = [m["threshold"]["precision"], m["threshold"]["recall"],
                    m["threshold"]["f1"],        m["threshold"]["fpr"]]
         smart_v = [m["ifs"]["precision"],       m["ifs"]["recall"],
                    m["ifs"]["f1"],              m["ifs"]["fpr"]]
-
         fig = go.Figure()
         fig.add_trace(go.Bar(
-            name="CPU Threshold", x=metrics, y=basic_v,
-            marker_color="#E07B54", opacity=0.85,
+            name="CPU Threshold", x=metrics, y=basic_v, marker_color="#F59E0B", opacity=0.8,
             text=[f"{v:.3f}" for v in basic_v], textposition="outside",
         ))
         fig.add_trace(go.Bar(
-            name="IFS Detector", x=metrics, y=smart_v,
-            marker_color="#4C72B0", opacity=0.85,
+            name="IFS Detector", x=metrics, y=smart_v, marker_color="#38BDF8", opacity=0.8,
             text=[f"{v:.3f}" for v in smart_v], textposition="outside",
         ))
         fig.update_layout(
             barmode="group", yaxis_range=[0, 1.15],
-            legend=dict(orientation="h", y=1.14, x=0),
-            margin=dict(t=50, b=10), plot_bgcolor="white",
-            yaxis=dict(gridcolor="#f0f0f0"),
+            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT)),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
+            yaxis=dict(gridcolor=_GRID), xaxis=dict(gridcolor=_GRID),
+            margin=dict(t=50, b=10),
         )
         st.plotly_chart(fig, use_container_width=True)
 
     with col_r:
-        st.subheader("Confusion Matrices")
+        st.subheader("Confusion Matrix")
         det_choice = st.radio(
             "Detector", ["IFS Detector", "CPU Threshold"], horizontal=True
         )
@@ -596,38 +710,42 @@ with tab_anomaly:
     with col_l2:
         st.subheader("Sensitivity Sweep")
         st.caption(
-            "Trade-off between precision and recall as the IFS alert threshold varies. "
-            "Lower threshold = stricter detection = higher recall, lower precision."
+            "Trade-off between precision and recall as the IFS alert threshold θ varies."
         )
         theta = st.slider(
             "Alert threshold (θ_ifs)", 0.45, 0.95, 0.65, 0.05,
             format="%.2f",
-            help="Runs scoring below this threshold are flagged as anomalous.",
+            help="Runs scoring below θ are flagged as anomalous.",
         )
         fig3 = go.Figure()
-        colors_map = {"precision": "#2ca02c", "recall": "#d62728", "f1": "#1f77b4"}
-        labels_map = {"precision": "Precision", "recall": "Recall", "f1": "F1 Score"}
-        for col_k, color in colors_map.items():
+        for col_k, color, name in [
+            ("precision", "#10B981", "Precision"),
+            ("recall",    "#EF4444", "Recall"),
+            ("f1",        "#38BDF8", "F1 Score"),
+        ]:
             fig3.add_trace(go.Scatter(
                 x=sweep["threshold"], y=sweep[col_k],
-                mode="lines+markers", name=labels_map[col_k],
+                mode="lines+markers", name=name,
                 line=dict(color=color, width=2.5), marker=dict(size=7),
             ))
-        fig3.add_vline(x=theta, line_dash="dash", line_color="#555555", line_width=2,
-                       annotation_text=f"  θ = {theta:.2f}", annotation_font_size=12)
+        fig3.add_vline(x=theta, line_dash="dash", line_color="#475569", line_width=2,
+                       annotation_text=f"  θ = {theta:.2f}",
+                       annotation_font=dict(color=_TEXT, size=12))
         fig3.update_layout(
-            xaxis_title="Alert Threshold (θ_ifs)", yaxis_title="Score", yaxis_range=[0, 1.05],
-            legend=dict(orientation="h", y=1.14, x=0),
-            margin=dict(t=50, b=10), plot_bgcolor="white",
-            xaxis=dict(gridcolor="#f0f0f0"), yaxis=dict(gridcolor="#f0f0f0"),
+            xaxis_title="Alert Threshold (θ_ifs)", yaxis_title="Score",
+            yaxis_range=[0, 1.05],
+            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT)),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
+            xaxis=dict(gridcolor=_GRID), yaxis=dict(gridcolor=_GRID),
+            margin=dict(t=50, b=10),
         )
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_r2:
-        st.subheader("Type-Mismatch Subgroup")
+        st.subheader("Type-Divergence Subgroup")
         st.caption(
-            "Workloads whose declared type differs from the NLP-inferred type. "
-            "Do they exhibit higher anomaly rates?"
+            "Workloads whose declared type differs from the NLP-inferred type — "
+            "do they exhibit higher anomaly rates?"
         )
         anomaly_rates = [
             mm_idx.loc["type_mismatch", "anomaly_rate"],
@@ -635,30 +753,123 @@ with tab_anomaly:
         ]
         fig4 = go.Figure()
         fig4.add_trace(go.Bar(
-            x=["Type Mismatch", "Correctly Labelled"],
+            x=["Type Divergence", "No Divergence"],
             y=anomaly_rates,
-            marker_color=["#DD8452", "#55A868"], opacity=0.9,
+            marker_color=["#F59E0B", "#10B981"], opacity=0.85,
             text=[f"{v:.1%}" for v in anomaly_rates], textposition="outside",
         ))
         fig4.update_layout(
             yaxis=dict(title="Anomaly Rate", range=[0, max(anomaly_rates) * 1.6],
-                       tickformat=".0%", gridcolor="#f0f0f0"),
-            margin=dict(t=30, b=10), plot_bgcolor="white", showlegend=False,
+                       tickformat=".0%", gridcolor=_GRID),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
+            margin=dict(t=30, b=10), showlegend=False,
         )
         st.plotly_chart(fig4, use_container_width=True)
 
         col_m1, col_m2 = st.columns(2)
         col_m1.metric(
-            "Mismatch — Anomaly Rate",
+            "Type Divergence — Anomaly Rate",
             f"{mm_idx.loc['type_mismatch','anomaly_rate']:.1%}",
-            delta=f"+{mm_idx.loc['type_mismatch','anomaly_rate'] - mm_idx.loc['non-mismatch','anomaly_rate']:.1%} vs correct",
+            delta=(f"+{mm_idx.loc['type_mismatch','anomaly_rate'] - mm_idx.loc['non-mismatch','anomaly_rate']:.1%}"
+                   " vs correct"),
             delta_color="inverse",
         )
         col_m2.metric(
-            "Mismatch — Mean IFS",
+            "Type Divergence — Mean IFS",
             f"{mm_idx.loc['type_mismatch','mean_ifs']:.3f}",
-            help="Lower score = weaker alignment with declared intent",
+            help="Lower score indicates weaker alignment with declared intent",
         )
+
+    # ── Case studies ──────────────────────────────────────────────────────────
+    st.divider()
+    st.subheader("Representative Governance Failure Patterns")
+    st.caption(
+        "Stylized examples from the controlled evaluation benchmark. "
+        "Each illustrates a distinct failure mode detected by the IBD system."
+    )
+
+    cc1, cc2, cc3 = st.columns(3)
+
+    with cc1:
+        st.markdown("""
+<div class="case-card">
+  <div class="case-title">Case 1 — Idle Cluster</div>
+  <div class="case-row">
+    <span class="case-label">Declared type</span>
+    <span class="case-val">ETL</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Observed idle time</span>
+    <span class="case-val">91% of runtime</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Root cause</span>
+    <span class="case-val">Abandoned cluster</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Wasted spend</span>
+    <span class="case-val">$312 / run</span>
+  </div>
+  <div class="case-ifs">IFS 0.31</div>
+  <div style="font-size:11px; color:#64748B; margin-top:4px;">
+    Severe divergence · Anomaly flagged
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    with cc2:
+        st.markdown("""
+<div class="case-card">
+  <div class="case-title">Case 2 — Misclassified Workload</div>
+  <div class="case-row">
+    <span class="case-label">Declared type</span>
+    <span class="case-val">adhoc</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Inferred type</span>
+    <span class="case-val">ml_training</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Observed</span>
+    <span class="case-val">GPU-heavy execution</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Root cause</span>
+    <span class="case-val">Workload-type divergence</span>
+  </div>
+  <div class="case-ifs">IFS 0.42</div>
+  <div style="font-size:11px; color:#64748B; margin-top:4px;">
+    Significant divergence · Policy guardrail bypassed
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    with cc3:
+        st.markdown("""
+<div class="case-card">
+  <div class="case-title">Case 3 — Runtime Overrun</div>
+  <div class="case-row">
+    <span class="case-label">Declared duration</span>
+    <span class="case-val">2 h</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Actual duration</span>
+    <span class="case-val">17 h</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Duration ratio</span>
+    <span class="case-val">8.5×</span>
+  </div>
+  <div class="case-row">
+    <span class="case-label">Root cause</span>
+    <span class="case-val">Runaway batch job</span>
+  </div>
+  <div class="case-ifs">IFS 0.28</div>
+  <div style="font-size:11px; color:#64748B; margin-top:4px;">
+    Severe divergence · Runtime termination triggered
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
     with st.expander("Full detector metrics table"):
         rows = []
@@ -668,11 +879,11 @@ with tab_anomaly:
         ]:
             d = m[name]
             rows.append({
-                "Detector":            label,
-                "Precision":           f"{d['precision']:.4f}",
-                "Recall":              f"{d['recall']:.4f}",
-                "F1 Score":            f"{d['f1']:.4f}",
-                "False Alarm Rate":    f"{d['fpr']:.4f}",
+                "Detector":         label,
+                "Precision":        f"{d['precision']:.4f}",
+                "Recall":           f"{d['recall']:.4f}",
+                "F1 Score":         f"{d['f1']:.4f}",
+                "False Alarm Rate": f"{d['fpr']:.4f}",
                 "TP": d["tp"], "FP": d["fp"], "TN": d["tn"], "FN": d["fn"],
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)

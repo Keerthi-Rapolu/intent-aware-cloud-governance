@@ -1,4 +1,4 @@
-"""Page 3 — Runtime & Savings: CPS / IFS metrics dashboard."""
+"""Page 3 — Runtime & Savings: CPS / IFS metrics + intervention timeline."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -6,7 +6,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
 from components.data_loader import (
-    load_kpis, load_cps_by_stage, load_cps_by_type, load_ifs_distribution,
+    load_kpis, load_cps_by_stage, load_cps_by_type,
+    load_ifs_distribution, load_intervention_examples,
 )
 from components.charts import (
     cps_by_stage_bar, cps_by_type_bar, ifs_histogram, ifs_category_donut,
@@ -15,26 +16,33 @@ from components.charts import (
 st.set_page_config(page_title="Runtime & Savings — PBCP", layout="wide")
 st.title("Runtime & Savings")
 st.caption(
-    "Cost prevention and alignment metrics across all benchmark workloads · "
-    "Controlled evaluation benchmark: seed 42, 500 workloads, 28,423 runs"
+    "Cost prevention and alignment metrics across the controlled evaluation benchmark · "
+    "seed 42 · 500 workloads · 28,423 runs"
 )
+
+st.markdown("""
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+  <span class="badge badge-sim">Controlled Benchmark</span>
+  <span class="badge badge-price">Published Cloud Pricing</span>
+  <span class="badge badge-warn">Controlled Anomaly Injection</span>
+</div>
+""", unsafe_allow_html=True)
 
 with st.expander("Metric definitions", expanded=False):
     st.markdown("""
-**CPS (Cost Prevention Score)** = `prevented_cost / potential_cost_without_system` (0–1, higher is better).
+**CPS (Cost Prevention Score)** = `prevented_cost / potential_cost_without_system` (0–1).
 Fraction of wasteful spend intercepted before billing.
 
-**Valid CPS** = `CPS × ESR` where ESR (Execution Success Rate) = fraction of workloads that completed
-successfully. ESR makes CPS gaming-resistant: a system that blocks aggressively earns low ESR and therefore
-low Valid CPS regardless of savings claimed.
+**Valid CPS** = `CPS × ESR`. ESR (Execution Success Rate) penalizes over-aggressive blocking to
+prevent gaming: a system that blocks every submission achieves CPS = 1 but ESR ≈ 0.
 
-**IFS (Intent-Fit Score)** = `0.35 × type_alignment + 0.25 × util_alignment + 0.20 × duration_alignment
-+ 0.20 × resource_alignment` (0–1). Measures alignment between declared intent and observed runtime behavior.
+**IFS (Intent-Fit Score)** — cosine similarity between intent and behavior embeddings.
+Sub-scores shown are interpretable components of the embedding-based calculation.
 
-Categories: well_aligned ≥ 0.85 · minor ≥ 0.70 · significant ≥ 0.50 · severe < 0.50.
+**IBD (Intent-Behavior Discrepancy)**: IFS < 0.65 triggers anomaly detection and root-cause attribution.
 
-**IBD (Intent-Behavior Discrepancy)**: IFS < 0.70 — declared intent and runtime behavior diverged enough
-to warrant a governance alert.
+Note: Benchmark includes controlled anomaly injection to evaluate governance effectiveness
+under realistic cloud waste scenarios. IBD rates reflect injected fault rates, not production baselines.
     """)
 
 kpis     = load_kpis()
@@ -42,7 +50,7 @@ stage_df = load_cps_by_stage()
 type_df  = load_cps_by_type()
 ifs_df   = load_ifs_distribution()
 
-# -- KPI row ----------------------------------------------------------------
+# -- KPI row -------------------------------------------------------------------
 c1, c2, c3, c4, c5 = st.columns(5)
 valid_cps = round(kpis["system_cps"] * 1.0, 4)
 c1.metric("System CPS",      f"{kpis['system_cps']:.3f}",
@@ -50,29 +58,101 @@ c1.metric("System CPS",      f"{kpis['system_cps']:.3f}",
 c2.metric("Valid CPS",       f"{valid_cps:.3f}",
           help="CPS × ESR — ESR penalises over-aggressive blocking")
 c3.metric("Mean IFS",        f"{kpis['mean_ifs']:.3f}",
-          help="Intent-Fit Score: 0–1, higher = declared intent matched runtime behavior")
-c4.metric("IBD Rate",        f"{kpis['ibd_fraction']*100:.1f}%",
-          help="Workloads with IFS < 0.70 — intent-behavior discrepancy")
+          help="Intent-Fit Score mean across benchmark (controlled injection included)")
+c4.metric("IBD Rate",        f"{kpis['ibd_fraction']*100:.0f}%",
+          help="Workloads with IFS < 0.65 — includes controlled anomaly injection")
 c5.metric("Total Prevented", f"${kpis['total_prevented']:,.0f}",
           help="Sum of prevented_cost_usd across all non-baseline intervention records")
 
+st.caption(
+    "Benchmark includes controlled anomaly injection to evaluate governance "
+    "effectiveness under realistic cloud waste scenarios."
+)
+
 st.divider()
 
-# -- Charts -----------------------------------------------------------------
+# -- Intervention Timeline -------------------------------------------------------
+st.subheader("Intervention Timeline")
+st.caption(
+    "Representative intervention records from the controlled benchmark. "
+    "Each card shows the full governance decision lifecycle for a workload."
+)
+
+INT_COLOR = {"AUTO_CORRECT": "#10B981", "BLOCK": "#EF4444",
+             "SUGGEST": "#F59E0B", "PASS": "#38BDF8"}
+INT_CLASS  = {"AUTO_CORRECT": "ac", "BLOCK": "blk", "SUGGEST": "sug", "PASS": "pas"}
+
+examples = load_intervention_examples()
+
+# Two-column layout for timeline cards
+left_cards = examples[:3]
+right_cards = examples[3:]
+
+col_l, col_r = st.columns(2)
+
+for card_col, cards in [(col_l, left_cards), (col_r, right_cards)]:
+    with card_col:
+        for ex in cards:
+            iv = ex["intervention"]
+            css_class = INT_CLASS.get(iv, "pas")
+            color      = INT_COLOR.get(iv, "#94A3B8")
+
+            node_text = (
+                f"{ex['requested_nodes']} → {ex['optimal_nodes']} nodes"
+                if iv != "PASS" and iv != "BLOCK"
+                else (f"No change · {ex['requested_nodes']} nodes"
+                      if iv == "PASS" else f"{ex['requested_nodes']} nodes blocked")
+            )
+            savings_text = (
+                f"${ex['prevented_cost']:.0f} prevented"
+                if ex["prevented_cost"] > 0
+                else "No direct savings (well-aligned)"
+            )
+
+            st.markdown(f"""
+<div class="iv-card {css_class}">
+  <h4>
+    <span style="color:{color};">[{iv}]</span> &nbsp;
+    {ex["workload_name"]}
+  </h4>
+  <p><span class="highlight">{ex["workload_type"]}</span>
+     &nbsp;·&nbsp; {ex["team"]}
+     &nbsp;·&nbsp;
+     <span style="color:{color}; font-weight:700;">{iv}</span>
+  </p>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:8px;">
+    <p>Requested nodes: <span class="highlight">{ex["requested_nodes"]}</span></p>
+    <p>Optimal nodes: <span class="highlight">{ex["optimal_nodes"]}</span></p>
+    <p>Predicted utilization: <span class="highlight">{ex["predicted_util"]:.0%}</span></p>
+    <p>Expected duration: <span class="highlight">{ex["expected_hours"]:.0f} h</span></p>
+    <p>Potential cost: <span class="highlight">${ex["potential_cost"]:.0f}</span></p>
+    <p>Prevented: <span style="color:{color}; font-weight:700;">${ex["prevented_cost"]:.0f}</span></p>
+  </div>
+  <p style="margin-top:6px;">
+    CPS <span class="highlight">{ex["cps"]:.3f}</span>
+    &nbsp;·&nbsp;
+    IFS <span class="highlight">{ex["ifs"]:.3f}</span>
+  </p>
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
+
+# -- Charts -------------------------------------------------------------------
 col_l, col_r = st.columns(2)
 
 with col_l:
     st.subheader("CPS by Stage")
     st.caption(
-        "Runtime interventions (mid-execution) achieve higher CPS than pre-provision checks "
-        "because they catch utilization failures that couldn't be predicted at submission time."
+        "Runtime interventions achieve higher CPS because they catch utilization failures "
+        "that cannot be fully predicted at submission time."
     )
     st.plotly_chart(cps_by_stage_bar(stage_df), use_container_width=True)
 
     st.subheader("IFS Distribution")
     st.caption(
-        "Distribution of Intent-Fit Scores across all benchmark runs. "
-        "Shaded regions indicate alignment category boundaries."
+        "Distribution across all benchmark runs. Shaded regions indicate alignment "
+        "category boundaries. Includes controlled anomaly injection."
     )
     st.plotly_chart(ifs_histogram(ifs_df), use_container_width=True)
 
@@ -84,16 +164,16 @@ with col_r:
     )
     st.plotly_chart(cps_by_type_bar(type_df), use_container_width=True)
 
-    st.subheader("Intent-Fit Score Category Breakdown")
+    st.subheader("Intent-Fit Score — Category Breakdown")
     st.caption(
-        "Category distribution across the benchmark. "
-        "Dataset includes controlled anomaly injection for evaluation purposes."
+        "Category distribution across the benchmark population. "
+        "Controlled anomaly injection is used to evaluate detection sensitivity."
     )
     st.plotly_chart(ifs_category_donut(ifs_df), use_container_width=True)
 
 st.divider()
 
-# -- Detail tables ----------------------------------------------------------
+# -- Detail tables ------------------------------------------------------------
 col_tl, col_tr = st.columns(2)
 
 with col_tl:
@@ -117,20 +197,25 @@ with col_tr:
 
 st.divider()
 
-# -- IFS category table -------------------------------------------------------
+# -- IFS Category Summary -----------------------------------------------------
 st.subheader("IFS Category Summary")
+st.caption(
+    "Alignment category distribution across the full benchmark. "
+    "Benchmark includes controlled anomaly injection to evaluate governance "
+    "effectiveness under realistic cloud waste scenarios."
+)
 if not ifs_df.empty:
     cat_summary = (
         ifs_df.groupby("ifs_category")
         .agg(count=("ifs", "count"), mean_ifs=("ifs", "mean"))
         .reset_index()
     )
-    cat_summary["share"] = (cat_summary["count"] / cat_summary["count"].sum() * 100).round(1)
+    cat_summary["share_%"] = (cat_summary["count"] / cat_summary["count"].sum() * 100).round(1)
     cat_summary["mean_ifs"] = cat_summary["mean_ifs"].round(3)
     st.dataframe(
         cat_summary.rename(columns={
             "ifs_category": "Category", "count": "Runs",
-            "mean_ifs": "Mean IFS", "share": "Share (%)",
+            "mean_ifs": "Mean IFS", "share_%": "Share (%)",
         }),
         use_container_width=True, hide_index=True,
     )

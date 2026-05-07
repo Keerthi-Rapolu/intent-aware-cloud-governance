@@ -1,4 +1,4 @@
-"""Page 4 — Learning System: Convergence Study · Feedback Loop."""
+"""Page 4 — Learning System: Convergence Study · Policy Adaptation · Feedback Loop."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -16,8 +16,14 @@ from components.data_loader import (
 )
 from components.charts import convergence_line
 
+_BG, _BG2, _GRID, _TEXT = "#0D1117", "#161B27", "rgba(255,255,255,0.06)", "#94A3B8"
+
 st.set_page_config(page_title="Learning System — PBCP", layout="wide")
 st.title("Learning System")
+st.caption(
+    "Phase 3 of PBCP — policy adaptation, divergence accumulation, "
+    "and prospective guardrail synthesis from observed failure patterns."
+)
 
 tab_conv, tab_feedback = st.tabs(["Convergence Study", "Feedback Loop"])
 
@@ -182,18 +188,21 @@ with tab_feedback:
             rc_plot = rc_df.copy()
             rc_plot["label"] = rc_plot["root_cause"].map(lambda x: RC_LABELS.get(x, x))
             RC_COLORS = {
-                "Over-Provisioned": "#1f77b4",
-                "Idle Cluster":     "#ff7f0e",
-                "Runaway Job":      "#d62728",
-                "Type Mismatch":    "#9467bd",
-                "Unknown":          "#7f7f7f",
+                "Over-Provisioned": "#38BDF8",
+                "Idle Cluster":     "#F59E0B",
+                "Runaway Job":      "#EF4444",
+                "Type Mismatch":    "#8B5CF6",
+                "Unknown":          "#475569",
             }
-            colors = [RC_COLORS.get(l, "#aaaaaa") for l in rc_plot["label"]]
+            colors = [RC_COLORS.get(l, "#475569") for l in rc_plot["label"]]
             fig = go.Figure(go.Pie(
                 labels=rc_plot["label"], values=rc_plot["n"],
-                hole=0.45, marker_colors=colors, textinfo="percent+label",
+                hole=0.48, marker_colors=colors, textinfo="percent+label",
+                textfont_color="#E2E8F0",
+                marker=dict(line=dict(color=_BG, width=2)),
             ))
-            fig.update_layout(showlegend=False, margin=dict(t=20, b=10))
+            fig.update_layout(showlegend=False, paper_bgcolor=_BG, plot_bgcolor=_BG2,
+                              font=dict(color=_TEXT), margin=dict(t=20, b=10))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -208,18 +217,19 @@ with tab_feedback:
             rc_plot = rc_df.copy()
             rc_plot["label"] = rc_plot["root_cause"].map(lambda x: RC_LABELS.get(x, x))
             rc_plot = rc_plot.sort_values("mean_cost_impact")
-            bar_colors2 = [RC_COLORS.get(l, "#aaaaaa") for l in rc_plot["label"]]
+            bar_colors2 = [RC_COLORS.get(l, "#475569") for l in rc_plot["label"]]
             fig2 = go.Figure(go.Bar(
                 x=rc_plot["mean_cost_impact"], y=rc_plot["label"],
-                orientation="h", marker_color=bar_colors2,
+                orientation="h", marker_color=bar_colors2, opacity=0.85,
                 text=[f"${v:.0f}" for v in rc_plot["mean_cost_impact"]],
                 textposition="outside",
             ))
             fig2.update_layout(
                 xaxis_title="Estimated Wasted Cost per Run ($)",
                 xaxis_range=[0, rc_plot["mean_cost_impact"].max() * 1.4],
-                plot_bgcolor="white",
-                xaxis=dict(gridcolor="#f0f0f0"),
+                paper_bgcolor=_BG, plot_bgcolor=_BG2,
+                font=dict(color=_TEXT),
+                xaxis=dict(gridcolor=_GRID),
                 margin=dict(t=20, b=10),
             )
             st.plotly_chart(fig2, use_container_width=True)
@@ -233,7 +243,7 @@ with tab_feedback:
         st.caption(
             "**Built-in rules** were defined a priori (e.g., 'ETL jobs must shut down within 4 hours').  \n"
             "**Synthesised rules** were generated automatically after the system observed "
-            "recurring failure patterns in the benchmark workloads."
+            "recurring failure patterns with sufficient evidence (≥ 3 occurrences)."
         )
         if not pol_df.empty:
             counts = pol_df["source"].value_counts().reset_index()
@@ -243,13 +253,15 @@ with tab_feedback:
             ).fillna(counts["source"])
             fig3 = go.Figure(go.Bar(
                 x=counts["label"], y=counts["n"],
-                marker_color=["#1f77b4", "#ff7f0e"][:len(counts)],
+                marker_color=["#38BDF8", "#10B981"][:len(counts)],
+                opacity=0.85,
                 text=counts["n"], textposition="outside",
             ))
             fig3.update_layout(
-                yaxis=dict(range=[0, counts["n"].max() * 1.5], gridcolor="#f0f0f0"),
-                plot_bgcolor="white", showlegend=False,
-                margin=dict(t=20, b=10),
+                yaxis=dict(range=[0, counts["n"].max() * 1.5], gridcolor=_GRID),
+                paper_bgcolor=_BG, plot_bgcolor=_BG2,
+                font=dict(color=_TEXT),
+                showlegend=False, margin=dict(t=20, b=10),
             )
             st.plotly_chart(fig3, use_container_width=True)
 
@@ -264,17 +276,19 @@ with tab_feedback:
             fig4 = go.Figure()
             fig4.add_trace(go.Histogram(
                 x=ibd_ifs["ifs"], nbinsx=25,
-                marker_color="#d62728", opacity=0.75,
+                marker_color="#EF4444", opacity=0.75,
             ))
-            fig4.add_vline(x=0.65, line_dash="dash", line_color="#555",
+            fig4.add_vline(x=0.65, line_dash="dash", line_color="#475569",
                            annotation_text="Alert threshold (0.65)",
-                           annotation_position="top right")
+                           annotation_position="top right",
+                           annotation_font_color=_TEXT)
             fig4.update_layout(
                 xaxis_title="Intent-Fit Score (IFS)",
-                yaxis_title="Number of Workloads",
-                plot_bgcolor="white",
-                xaxis=dict(gridcolor="#f0f0f0"),
-                yaxis=dict(gridcolor="#f0f0f0"),
+                yaxis_title="Workload Count",
+                paper_bgcolor=_BG, plot_bgcolor=_BG2,
+                font=dict(color=_TEXT),
+                xaxis=dict(gridcolor=_GRID),
+                yaxis=dict(gridcolor=_GRID),
                 margin=dict(t=20, b=10), showlegend=False,
             )
             st.plotly_chart(fig4, use_container_width=True)
