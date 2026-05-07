@@ -11,14 +11,14 @@ _BG2     = "#161B27"
 _GRID    = "rgba(255,255,255,0.06)"
 _TEXT    = "#94A3B8"
 
-STAGE_COLORS  = {"pre_provision": "#38BDF8", "runtime": "#10B981", "ai_workload": "#8B5CF6"}
+STAGE_COLORS  = {"pre_provision": "#38BDF8", "runtime": "#10B981", "ai_workload": "#6366F1"}
 TYPE_COLORS   = {
     "etl":         "#38BDF8",
     "adhoc":       "#F59E0B",
     "ml_training": "#10B981",
-    "llm_pipeline":"#8B5CF6",
-    "batch":       "#06B6D4",
-    "streaming":   "#F43F5E",
+    "llm_pipeline":"#818CF8",
+    "batch":       "#94A3B8",
+    "streaming":   "#34D399",
 }
 IFS_COLORS = {
     "well_aligned": "#10B981",
@@ -40,9 +40,11 @@ def _base_layout(**kwargs) -> dict:
         paper_bgcolor=_BG,
         plot_bgcolor=_BG2,
         font=dict(color=_TEXT, size=12),
-        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID),
-        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID),
-        margin=dict(t=40, b=10, l=10, r=10),
+        xaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID,
+                   title_font=dict(size=12, color=_TEXT)),
+        yaxis=dict(gridcolor=_GRID, linecolor=_GRID, zerolinecolor=_GRID,
+                   title_font=dict(size=12, color=_TEXT)),
+        margin=dict(t=40, b=10, l=10, r=24),
     )
     base.update(kwargs)
     return base
@@ -53,11 +55,12 @@ def cps_by_stage_bar(df: pd.DataFrame) -> go.Figure:
         df, x="stage", y="cps", color="stage",
         color_discrete_map=STAGE_COLORS,
         text=df["cps"].apply(lambda v: f"{v:.3f}"),
-        labels={"cps": "CPS", "stage": "Stage"},
+        labels={"cps": "Cost Prevention Score (CPS)", "stage": "Evaluation Stage"},
     )
-    fig.update_traces(textposition="outside", marker_opacity=0.85)
+    fig.update_traces(textposition="outside", marker_opacity=0.80)
     fig.update_layout(
-        showlegend=False, yaxis_range=[0, df["cps"].max() * 1.35],
+        showlegend=False,
+        yaxis_range=[0, df["cps"].max() * 1.38],
         **_base_layout(),
     )
     return fig
@@ -65,15 +68,17 @@ def cps_by_stage_bar(df: pd.DataFrame) -> go.Figure:
 
 def cps_by_type_bar(df: pd.DataFrame) -> go.Figure:
     df = df.sort_values("cps")
-    fig = px.bar(
-        df, x="cps", y="workload_type", orientation="h",
-        color="workload_type", color_discrete_map=TYPE_COLORS,
+    fig = go.Figure(go.Bar(
+        x=df["cps"], y=df["workload_type"], orientation="h",
+        marker_color="#38BDF8", marker_opacity=0.78,
         text=df["cps"].apply(lambda v: f"{v:.3f}"),
-        labels={"cps": "CPS", "workload_type": "Workload type"},
-    )
-    fig.update_traces(textposition="outside", marker_opacity=0.85)
+        textposition="outside",
+        textfont=dict(color=_TEXT, size=12),
+    ))
     fig.update_layout(
-        showlegend=False, xaxis_range=[0, df["cps"].max() * 1.35],
+        showlegend=False,
+        xaxis_range=[0, df["cps"].max() * 1.38],
+        xaxis_title="Cost Prevention Score (CPS)",
         **_base_layout(),
     )
     return fig
@@ -94,12 +99,15 @@ def ifs_histogram(df: pd.DataFrame) -> go.Figure:
                   annotation_text="severe", annotation_position="top left",
                   annotation_font_color="#EF4444")
     fig.add_trace(go.Histogram(
-        x=df["ifs"], nbinsx=40, marker_color="#38BDF8",
-        opacity=0.75, name="IFS",
+        x=df["ifs"], nbinsx=30, marker_color="#38BDF8",
+        opacity=0.72, name="IFS",
+        marker_line=dict(width=0.5, color=_BG),
     ))
     fig.update_layout(
-        xaxis_title="Intent-Fit Score (IFS)", yaxis_title="Run Count",
-        showlegend=False, **_base_layout(),
+        xaxis_title="Intent-Fit Score (IFS)",
+        yaxis_title="Run Count",
+        showlegend=False,
+        **_base_layout(),
     )
     return fig
 
@@ -333,13 +341,16 @@ def convergence_line(df: pd.DataFrame) -> go.Figure:
     fig.add_annotation(x=5.75, y=0.02, text="Runtime<br>gens 4–7",
                        showarrow=False, font=dict(size=10, color="#475569"), yref="paper")
     fig.update_layout(
-        xaxis_title="Generation", yaxis_title="Mean CPS (±95% CI, 5 seeds)",
-        xaxis=dict(tickmode="linear", tick0=0, dtick=1, gridcolor=_GRID),
+        xaxis_title="Generation",
+        yaxis_title="Mean CPS (±95% CI, 5 seeds)",
+        xaxis=dict(tickmode="linear", tick0=0, dtick=1, gridcolor=_GRID,
+                   title_font=dict(size=12, color=_TEXT)),
         yaxis_range=[0, None],
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-                    font=dict(color=_TEXT)),
+                    font=dict(color=_TEXT, size=12),
+                    bgcolor="rgba(0,0,0,0)", borderwidth=0),
         paper_bgcolor=_BG, plot_bgcolor=_BG2,
-        font=dict(color=_TEXT),
-        margin=dict(t=50, b=10),
+        font=dict(color=_TEXT, size=12),
+        margin=dict(t=56, b=10, l=10, r=24),
     )
     return fig

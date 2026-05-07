@@ -11,8 +11,8 @@ st.set_page_config(page_title="Overview — PBCP", layout="wide")
 
 # Research identity bar
 st.markdown("""
-<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-            text-transform: uppercase; color: #38BDF8; margin-bottom: 6px;">
+<div style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
+            color: #38BDF8; margin-bottom: 6px; opacity: 0.9;">
   Cloud Systems Research &nbsp;·&nbsp; IACG v2.0
 </div>
 """, unsafe_allow_html=True)

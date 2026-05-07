@@ -202,7 +202,7 @@ with tab_feedback:
                 marker=dict(line=dict(color=_BG, width=2)),
             ))
             fig.update_layout(showlegend=False, paper_bgcolor=_BG, plot_bgcolor=_BG2,
-                              font=dict(color=_TEXT), margin=dict(t=20, b=10))
+                              font=dict(color=_TEXT, size=12), margin=dict(t=24, b=10, l=10, r=24))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
@@ -226,11 +226,11 @@ with tab_feedback:
             ))
             fig2.update_layout(
                 xaxis_title="Estimated Wasted Cost per Run ($)",
-                xaxis_range=[0, rc_plot["mean_cost_impact"].max() * 1.4],
+                xaxis_range=[0, rc_plot["mean_cost_impact"].max() * 1.42],
                 paper_bgcolor=_BG, plot_bgcolor=_BG2,
-                font=dict(color=_TEXT),
-                xaxis=dict(gridcolor=_GRID),
-                margin=dict(t=20, b=10),
+                font=dict(color=_TEXT, size=12),
+                xaxis=dict(gridcolor=_GRID, title_font=dict(size=12, color=_TEXT)),
+                margin=dict(t=24, b=10, l=10, r=24),
             )
             st.plotly_chart(fig2, use_container_width=True)
 
@@ -258,10 +258,11 @@ with tab_feedback:
                 text=counts["n"], textposition="outside",
             ))
             fig3.update_layout(
-                yaxis=dict(range=[0, counts["n"].max() * 1.5], gridcolor=_GRID),
+                yaxis=dict(range=[0, counts["n"].max() * 1.55], gridcolor=_GRID,
+                           title="Rule Count"),
                 paper_bgcolor=_BG, plot_bgcolor=_BG2,
-                font=dict(color=_TEXT),
-                showlegend=False, margin=dict(t=20, b=10),
+                font=dict(color=_TEXT, size=12),
+                showlegend=False, margin=dict(t=24, b=10, l=10, r=24),
             )
             st.plotly_chart(fig3, use_container_width=True)
 
@@ -286,10 +287,10 @@ with tab_feedback:
                 xaxis_title="Intent-Fit Score (IFS)",
                 yaxis_title="Workload Count",
                 paper_bgcolor=_BG, plot_bgcolor=_BG2,
-                font=dict(color=_TEXT),
-                xaxis=dict(gridcolor=_GRID),
-                yaxis=dict(gridcolor=_GRID),
-                margin=dict(t=20, b=10), showlegend=False,
+                font=dict(color=_TEXT, size=12),
+                xaxis=dict(gridcolor=_GRID, title_font=dict(size=12, color=_TEXT)),
+                yaxis=dict(gridcolor=_GRID, title_font=dict(size=12, color=_TEXT)),
+                margin=dict(t=24, b=10, l=10, r=24), showlegend=False,
             )
             st.plotly_chart(fig4, use_container_width=True)
         else:

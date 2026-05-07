@@ -165,10 +165,11 @@ with tab_demo:
                          annotation_position="top right",
                          annotation_font_color="#EF4444")
         eg_fig.update_layout(
-            yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor=_GRID),
+            yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
+                       title_font=dict(size=12, color=_TEXT)),
             paper_bgcolor=_BG, plot_bgcolor=_BG2,
-            font=dict(color=_TEXT),
-            margin=dict(t=30, b=10), showlegend=False,
+            font=dict(color=_TEXT, size=12),
+            margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
         )
         st.plotly_chart(eg_fig, use_container_width=True)
         st.stop()
@@ -203,7 +204,10 @@ with tab_demo:
     }
 
     if "demo_desc" not in st.session_state:
-        st.session_state.demo_desc = ""
+        st.session_state.demo_desc = (
+            "Weekly customer churn model retraining on 3 TB Spark ML dataset "
+            "with PII records — hyperparameter search, XGBoost, distributed training"
+        )
     if "demo_type" not in st.session_state:
         st.session_state.demo_type = "ml_training"
     if "demo_nodes" not in st.session_state:
@@ -446,8 +450,8 @@ After PBCP Intervention
                "font": {"size": 16, "color": ifs_color}},
     ))
     gauge.update_layout(height=260, paper_bgcolor=_BG, plot_bgcolor=_BG,
-                        font=dict(color=_TEXT),
-                        margin=dict(t=40, b=0, l=30, r=30))
+                        font=dict(color=_TEXT, size=12),
+                        margin=dict(t=40, b=0, l=32, r=32))
 
     col_gauge, col_verdict = st.columns([1, 1])
     with col_gauge:
@@ -506,10 +510,11 @@ After PBCP Intervention
                       annotation_font_color="#EF4444")
     bar_fig.add_hline(y=1.0, line_color="rgba(0,0,0,0)")
     bar_fig.update_layout(
-        yaxis=dict(range=[0, 1.15], title="Alignment Score", gridcolor=_GRID),
+        yaxis=dict(range=[0, 1.18], title="Alignment Score", gridcolor=_GRID,
+                   title_font=dict(size=12, color=_TEXT)),
         paper_bgcolor=_BG, plot_bgcolor=_BG2,
-        font=dict(color=_TEXT),
-        margin=dict(t=30, b=10), showlegend=False,
+        font=dict(color=_TEXT, size=12),
+        margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
     )
     st.plotly_chart(bar_fig, use_container_width=True)
 
@@ -682,11 +687,13 @@ with tab_anomaly:
             text=[f"{v:.3f}" for v in smart_v], textposition="outside",
         ))
         fig.update_layout(
-            barmode="group", yaxis_range=[0, 1.15],
-            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT)),
-            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
-            yaxis=dict(gridcolor=_GRID), xaxis=dict(gridcolor=_GRID),
-            margin=dict(t=50, b=10),
+            barmode="group", yaxis_range=[0, 1.18],
+            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT, size=12),
+                        bgcolor="rgba(0,0,0,0)", borderwidth=0),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT, size=12),
+            yaxis=dict(gridcolor=_GRID, title="Score"),
+            xaxis=dict(gridcolor=_GRID),
+            margin=dict(t=54, b=10, l=10, r=24),
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -732,12 +739,15 @@ with tab_anomaly:
                        annotation_text=f"  θ = {theta:.2f}",
                        annotation_font=dict(color=_TEXT, size=12))
         fig3.update_layout(
-            xaxis_title="Alert Threshold (θ_ifs)", yaxis_title="Score",
-            yaxis_range=[0, 1.05],
-            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT)),
-            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
-            xaxis=dict(gridcolor=_GRID), yaxis=dict(gridcolor=_GRID),
-            margin=dict(t=50, b=10),
+            xaxis_title="Alert Threshold (θ_ifs)",
+            yaxis_title="Score",
+            yaxis_range=[0, 1.08],
+            legend=dict(orientation="h", y=1.14, x=0, font=dict(color=_TEXT, size=12),
+                        bgcolor="rgba(0,0,0,0)", borderwidth=0),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT, size=12),
+            xaxis=dict(gridcolor=_GRID, title_font=dict(size=12, color=_TEXT)),
+            yaxis=dict(gridcolor=_GRID, title_font=dict(size=12, color=_TEXT)),
+            margin=dict(t=54, b=10, l=10, r=24),
         )
         st.plotly_chart(fig3, use_container_width=True)
 
@@ -759,10 +769,11 @@ with tab_anomaly:
             text=[f"{v:.1%}" for v in anomaly_rates], textposition="outside",
         ))
         fig4.update_layout(
-            yaxis=dict(title="Anomaly Rate", range=[0, max(anomaly_rates) * 1.6],
-                       tickformat=".0%", gridcolor=_GRID),
-            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT),
-            margin=dict(t=30, b=10), showlegend=False,
+            yaxis=dict(title="Anomaly Rate", range=[0, max(anomaly_rates) * 1.65],
+                       tickformat=".0%", gridcolor=_GRID,
+                       title_font=dict(size=12, color=_TEXT)),
+            paper_bgcolor=_BG, plot_bgcolor=_BG2, font=dict(color=_TEXT, size=12),
+            margin=dict(t=32, b=10, l=10, r=24), showlegend=False,
         )
         st.plotly_chart(fig4, use_container_width=True)
 

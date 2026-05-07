@@ -21,6 +21,8 @@ st.set_page_config(
 st.markdown("""
 <style>
 /* ── Typography ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 html, body, [class*="css"] {
     font-family: "Inter", "IBM Plex Sans", "Source Sans Pro", ui-sans-serif, system-ui, sans-serif;
 }
@@ -30,35 +32,38 @@ html, body, [class*="css"] {
     background: #161B27;
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 14px;
+    padding: 22px 26px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.32);
+    transition: border-color 0.2s ease;
 }
 
 /* ── Phase blocks ───────────────────────────────────────── */
 .phase-block {
     background: #1A2235;
-    border: 1px solid rgba(56,189,248,0.18);
+    border: 1px solid rgba(56,189,248,0.13);
     border-radius: 14px;
-    padding: 22px;
+    padding: 24px;
     height: 100%;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.28);
 }
 .phase-title {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .phase-step {
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     font-size: 13px;
     color: #CBD5E1;
-    line-height: 1.5;
+    line-height: 1.55;
 }
 .phase-step-dot {
     width: 6px;
@@ -69,63 +74,66 @@ html, body, [class*="css"] {
 }
 .phase-arrow {
     text-align: center;
-    color: rgba(255,255,255,0.25);
-    font-size: 16px;
-    margin: 4px 0;
+    color: rgba(255,255,255,0.2);
+    font-size: 15px;
+    margin: 2px 0;
 }
 
 /* ── Decision badge ─────────────────────────────────────── */
 .badge {
     display: inline-block;
-    padding: 2px 10px;
+    padding: 3px 11px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
-.badge-sim    { background: rgba(56,189,248,0.12); color: #38BDF8;  border: 1px solid rgba(56,189,248,0.3); }
-.badge-proto  { background: rgba(139,92,246,0.12); color: #A78BFA;  border: 1px solid rgba(139,92,246,0.3); }
-.badge-price  { background: rgba(16,185,129,0.12); color: #34D399;  border: 1px solid rgba(16,185,129,0.3); }
-.badge-warn   { background: rgba(245,158,11,0.12); color: #FBBF24;  border: 1px solid rgba(245,158,11,0.3); }
+.badge-sim    { background: rgba(56,189,248,0.10); color: #38BDF8;  border: 1px solid rgba(56,189,248,0.25); }
+.badge-proto  { background: rgba(139,92,246,0.10); color: #A78BFA;  border: 1px solid rgba(139,92,246,0.25); }
+.badge-price  { background: rgba(16,185,129,0.10); color: #34D399;  border: 1px solid rgba(16,185,129,0.25); }
+.badge-warn   { background: rgba(245,158,11,0.10); color: #FBBF24;  border: 1px solid rgba(245,158,11,0.25); }
 
 /* ── Intervention timeline card ─────────────────────────── */
 .iv-card {
     background: #161B27;
     border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
     border-left: 3px solid;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.24);
+    transition: box-shadow 0.15s ease;
 }
 .iv-card.ac  { border-color: #10B981; }
 .iv-card.blk { border-color: #EF4444; }
 .iv-card.sug { border-color: #F59E0B; }
 .iv-card.pas { border-color: #38BDF8; }
-.iv-card h4  { margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #E2E8F0; }
+.iv-card h4  { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #E2E8F0; }
 .iv-card p   { margin: 2px 0; font-size: 12px; color: #94A3B8; }
 .iv-card .highlight { color: #E2E8F0; font-weight: 600; }
 
 /* ── Case study card ────────────────────────────────────── */
 .case-card {
     background: #161B27;
-    border: 1px solid rgba(239,68,68,0.18);
-    border-radius: 10px;
-    padding: 18px 20px;
-    margin-bottom: 12px;
+    border: 1px solid rgba(239,68,68,0.13);
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
-.case-card .case-title { font-size: 13px; font-weight: 700; color: #F87171; margin-bottom: 8px; }
-.case-card .case-row   { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.case-card .case-title { font-size: 13px; font-weight: 600; color: #F87171; margin-bottom: 10px; }
+.case-card .case-row   { display: flex; justify-content: space-between; margin-bottom: 5px; }
 .case-card .case-label { font-size: 12px; color: #64748B; }
-.case-card .case-val   { font-size: 12px; color: #CBD5E1; font-weight: 600; }
-.case-card .case-ifs   { font-size: 20px; font-weight: 800; color: #EF4444; margin-top: 8px; }
+.case-card .case-val   { font-size: 12px; color: #CBD5E1; font-weight: 500; }
+.case-card .case-ifs   { font-size: 20px; font-weight: 700; color: #EF4444; margin-top: 10px; }
 
 /* ── Section divider ────────────────────────────────────── */
 .section-label {
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #475569;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -148,8 +156,8 @@ Use the sidebar links above to navigate.
 # -- Home page ----------------------------------------------------------------
 st.markdown("""
 <div style="margin-bottom: 8px;">
-  <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-               text-transform: uppercase; color: #38BDF8;">
+  <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
+               color: #38BDF8; opacity: 0.9;">
     Cloud Systems Research · IACG v2.0
   </span>
 </div>
