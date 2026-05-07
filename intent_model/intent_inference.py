@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 from .workload_intent import (
     InferredIntentFields, WorkloadType,
@@ -13,22 +13,32 @@ from .intent_catalog import INTENT_CATALOG
 # ── Keyword maps ───────────────────────────────────────────────────────────────
 
 _TYPE_KEYWORDS: dict[str, list[str]] = {
-    "etl":          ["etl", "pipeline", "ingest", "transform", "load", "extract",
-                     "batch transformation", "data pipeline"],
-    "adhoc":        ["ad-hoc", "adhoc", "exploratory", "quick", "one-off", "investigate",
-                     "spot check", "interactive"],
-    "ml_training":  ["train", "retrain", "fine-tune", "hyperparameter", "model refit",
-                     "fit", "model training", "retraining"],
-    "llm_pipeline": ["llm", "embedding", "rag", "vector", "prompt", "inference",
-                     "batch llm", "completion", "token"],
+    "etl":          ["etl", "ingest", "transform", "extract", "batch transformation",
+                     "data pipeline", "reconciliation", "parquet", "warehouse load",
+                     "nightly load", "daily load", "data lake", "snowflake", "redshift",
+                     "sales etl", "billing etl"],
+    "adhoc":        ["ad-hoc", "adhoc", "exploratory", "one-off", "investigate",
+                     "spot check", "temporary", "analysis", "campaign analysis",
+                     "marketing analysis", "quick query", "exploration", "exploratory sql"],
+    "ml_training":  ["train", "retrain", "fine-tune", "fine-tuning", "hyperparameter",
+                     "model refit", "model training", "retraining", "feature engineering",
+                     "spark ml", "xgboost", "sklearn", "pytorch training", "model fitting",
+                     "churn model", "forecast model", "propensity"],
+    "llm_pipeline": ["llm", "embedding", "rag", "vector", "prompt", "gpt", "openai",
+                     "batch llm", "completion", "token", "vector search",
+                     "semantic search", "summarization", "inference pipeline",
+                     "rag pipeline", "customer support summary"],
     "batch":        ["batch scoring", "batch inference", "batch export", "overnight",
-                     "aggregation job", "scoring", "reconciliation", "enrichment pipeline"],
+                     "aggregation job", "scoring", "enrichment pipeline",
+                     "bulk processing", "nightly scoring", "periodic batch"],
     "streaming":    ["streaming", "real-time", "real time", "continuous", "live",
-                     "event stream", "kafka", "cdc", "tumbling window"],
+                     "event stream", "kafka", "cdc", "tumbling window",
+                     "clickstream", "fraud monitoring", "realtime", "stream processing",
+                     "aggregation pipeline"],
 }
 
 _PII_KEYWORDS = ["customer", "user", "payment", "pii", "personal", "ssn",
-                 "credit card", "email", "phone", "address"]
+                 "credit card", "email", "phone", "address", "gdpr", "hipaa"]
 
 _RECURRENCE_PATTERNS = [
     r"\b(weekly|daily|nightly|monthly|quarterly|hourly)\b",
@@ -37,15 +47,12 @@ _RECURRENCE_PATTERNS = [
     r"\b(every|each)\s+(day|week|night|hour)\b",
 ]
 
-_DATA_VOLUME_PATTERNS = {
-    "xl":     [r"\b([5-9]\d{2}|[1-9]\d{3,})\s*[gt]b\b", r"\b[12]\s*tb\b"],
-    "large":  [r"\b([1-9]\d{2})\s*[gt]b\b", r"\b5\d{2}\s*mb\b"],
-    "medium": [r"\b[1-9]\d\s*gb\b", r"\b[1-9]\d{2}\s*mb\b"],
-}
+# Deterministic numeric extraction: detect value + unit and convert to GB
+_DATA_VOL_RE = re.compile(r'\b(\d+(?:\.\d+)?)\s*(pb|tb|gb|mb)\b', re.IGNORECASE)
 
 _LATENCY_KEYWORDS: dict[str, list[str]] = {
     "real_time":   ["real-time", "real time", "live", "streaming", "continuous", "always-on"],
-    "interactive": ["interactive", "ad-hoc", "adhoc", "quick", "exploratory"],
+    "interactive": ["interactive", "ad-hoc", "adhoc", "exploratory"],
 }
 
 
@@ -65,12 +72,23 @@ def _detect_pii(text: str) -> bool:
 
 
 def _detect_data_volume(text: str) -> DataVolumeEstimate:
-    lower = text.lower()
-    for level in ("xl", "large", "medium"):
-        for pattern in _DATA_VOLUME_PATTERNS[level]:
-            if re.search(pattern, lower):
-                return level  # type: ignore[return-value]
-    return "small"
+    """
+    Deterministic numeric extraction: parse value + unit, convert to GB.
+    Mapping: <100 GB → small, 100 GB–1 TB → medium, 1–10 TB → large, >10 TB → xl.
+    3 TB correctly maps to 'large'; this fixes the prior regex that missed sub-4-digit TB values.
+    """
+    m = _DATA_VOL_RE.search(text)
+    if not m:
+        return "small"
+    value, unit = float(m.group(1)), m.group(2).lower()
+    gb = value * {"pb": 1_048_576, "tb": 1_024, "gb": 1, "mb": 1 / 1_024}[unit]
+    if gb >= 10_240:
+        return "xl"      # > 10 TB
+    if gb >= 1_024:
+        return "large"   # 1 TB – 10 TB
+    if gb >= 100:
+        return "medium"  # 100 GB – 1 TB
+    return "small"       # < 100 GB
 
 
 def _detect_latency(text: str) -> LatencySensitivity:
@@ -83,9 +101,10 @@ def _detect_latency(text: str) -> LatencySensitivity:
 
 def _classify_type(text: str) -> tuple[WorkloadType, float]:
     """
-    Keyword-based workload type classifier.
+    Deterministic keyword classifier — stage 1 of hybrid inference.
     Returns (predicted_type, confidence).
-    Replace with fine-tuned DistilBERT checkpoint for paper results (Option A).
+    High confidence (≥ 0.75) when two or more distinct signals match.
+    Falls back to BERT when confidence is low (see _classify).
     """
     lower = text.lower()
     scores: dict[str, int] = {t: 0 for t in _TYPE_KEYWORDS}
@@ -98,10 +117,15 @@ def _classify_type(text: str) -> tuple[WorkloadType, float]:
     best_score = scores[best_type]
 
     if best_score == 0:
-        return "adhoc", 0.55   # safe default
+        return "adhoc", 0.52   # conservative default
 
     total = sum(scores.values())
-    confidence = round(min(0.50 + (best_score / total) * 0.45, 0.98), 3)
+    # High deterministic confidence when >= 2 keyword signals agree
+    if best_score >= 2:
+        confidence = round(min(0.75 + (best_score / total) * 0.20, 0.97), 3)
+    else:
+        confidence = round(min(0.52 + (best_score / total) * 0.40, 0.80), 3)
+
     return best_type, confidence  # type: ignore[return-value]
 
 
@@ -126,10 +150,15 @@ def load_bert_classifier():
 class IntentInferenceEngine:
     """
     Extracts InferredIntentFields from a natural-language workload description.
+    Hybrid inference: deterministic keyword extraction → BERT (if checkpoint present).
+    Deterministic result is preferred when confidence ≥ 0.75 (≥ 2 keyword signals).
 
     Usage:
         engine = IntentInferenceEngine()
-        fields = engine.infer("weekly customer churn model retraining", declared_type="ml_training")
+        fields = engine.infer(
+            "weekly customer churn model retraining on 3TB Spark ML dataset",
+            declared_type="ml_training",
+        )
     """
 
     def __init__(self, db_path: Optional[str] = None) -> None:
@@ -164,15 +193,29 @@ class IntentInferenceEngine:
         )
 
     def _classify(self, description: str, declared_type: str) -> tuple[WorkloadType, float]:
+        """
+        Hybrid inference:
+        1. Deterministic keyword extraction.
+        2. If deterministic confidence is high (>= 0.75), return immediately.
+        3. Otherwise attempt BERT; take BERT only if it is more confident by >= 0.10.
+        """
+        det_type, det_conf = _classify_type(description)
+
+        if det_conf >= 0.75:
+            return det_type, det_conf
+
         if self._bert is not None:
             try:
                 result = self._bert(description[:512])[0]
                 label: WorkloadType = result["label"]
                 if label in INTENT_CATALOG:
-                    return label, float(result["score"])
+                    bert_conf = float(result["score"])
+                    if bert_conf >= det_conf + 0.10:
+                        return label, round(bert_conf, 3)
             except Exception:
                 pass
-        return _classify_type(description)
+
+        return det_type, det_conf
 
     def _team_history(
         self, team: Optional[str], workload_type: str

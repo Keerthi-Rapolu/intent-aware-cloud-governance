@@ -1,0 +1,22 @@
+% --- (a) IBD Detector Comparison ---
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{Detector} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{FPR} & \textbf{TP} & \textbf{FP} & \textbf{TN} & \textbf{FN} \\
+\midrule
+
+CPU Threshold ($<$0.30) & 0.6502 & 0.5663 & 0.6054 & 0.0840 & 3411 & 1835 & 20022 & 2612 \\
+IFS Detector ($<$0.65) & 0.6434 & 0.9306 & 0.7608 $\checkmark$ & 0.1421 & 5605 & 3106 & 18751 & 418 \\
+\bottomrule
+\end{tabular}
+
+
+% --- (b) type\_mismatch Subgroup Analysis ---
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Subgroup} & \textbf{$n$} & \textbf{Anomaly Rate} & \textbf{Mean IFS} & \textbf{Over-Prov Rate} \\
+\midrule
+
+type\_mismatch & 4057 & 0.2275 $\times$ & 0.6521 & 0.1161 \\
+non-mismatch & 23823 & 0.2141 & 0.6447 & 0.1438 \\
+\bottomrule
+\end{tabular}
