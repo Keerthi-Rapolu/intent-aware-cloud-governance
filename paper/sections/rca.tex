@@ -1,34 +1,32 @@
-% RCA and feedback-loop support text
 % Authors: Keerthi Rapolu & Sreeja Katta
 
-\subsection{Anomaly Root Cause Analysis and the Prevention Feedback Loop}
+\subsection{Anomaly Root Cause Analysis and Prevention Feedback}
 
-The RCA module closes the governance loop by converting recurring divergence
-patterns into policy suggestions. After each generation, \texttt{RootCauseAnalyzer}
-queries historical incidents and groups them by workload type and incident
-category: over-provisioned requests, idle cluster patterns, runaway jobs, and
-undeclared token budget. When the same pattern recurs at least three times within
-a lookback window, the module synthesizes a \texttt{Policy} object with confidence
-proportional to pattern frequency and submits it to \texttt{PolicyRegistry}.
+The RCA module converts recurring divergence patterns into policy suggestions,
+closing the governance loop between runtime monitoring and future pre-billing
+intervention. After each generation, \texttt{RootCauseAnalyzer} queries
+historical incidents grouped by workload type and incident category ---
+over-provisioned requests, idle cluster patterns, runaway execution, and
+undeclared token budget --- and synthesizes a \texttt{Policy} object when the
+same pattern recurs at least three times within a lookback window. Confidence
+scales with pattern frequency up to a ceiling of 0.95, and only policies above
+the 0.60 threshold enter the registry.
 
-This mechanism matters for governance timing in a specific way. Pre-billing
-intervention handles known divergence patterns through preconfigured rules, but
-novel or low-frequency patterns are not covered by static policy. The feedback
-loop fills that gap: workloads that escape pre-billing intervention, behave
-anomalously at runtime, and are flagged by IFS eventually contribute to new
-learned policies that catch the same pattern in subsequent submissions. The policy
-learning convergence result from Exp~6 is partly attributable to this loop—Full
-PBCP substantially outperforms the No Phase~3 ablation because learned policies
-progressively reduce the baseline rate of uncaught divergence.
+This mechanism addresses a gap that static pre-billing policy cannot fill.
+Preconfigured rules handle known divergence patterns, but novel or low-frequency
+patterns are not covered at system initialization. The feedback loop fills that
+gap incrementally: workloads that escape pre-billing intervention, behave
+anomalously at runtime, and are flagged by IFS contribute to learned policies
+that catch the same pattern in subsequent submissions. The Exp~6 convergence
+result is partly attributable to this accumulation --- Full PBCP substantially
+outperforms the No Phase~3 ablation because learned policies progressively
+reduce the baseline rate of uncaught divergence.
 
-The current feedback mechanism has two honest limitations. First, it operates on
-synthetic incident data. Incident classification in the benchmark is deterministic
-and the pattern counts are controlled, so the confidence and frequency estimates
-may not reflect the noisier, more ambiguous incident streams that appear in
-real enterprise environments. Second, the current implementation does not weight
-incidents by recency or cost severity within the pattern-counting logic. Two
-incidents with high cost impact and three incidents with low cost impact are
-treated identically, which could generate low-value learned policies while
-missing high-priority intervention opportunities. Both limitations are addressable
-through production integration and represent near-term extensions rather than
-design defects.
+Two limitations apply to the current implementation. First, the feedback loop
+operates on synthetic incident data, so confidence and frequency estimates may
+not reflect the noisier incident streams in real enterprise environments. Second,
+the pattern-counting logic does not weight incidents by recency or cost severity,
+meaning a cluster of low-cost incidents and a smaller cluster of high-cost
+incidents are treated identically. Both limitations are addressable in a
+production deployment and represent near-term extensions rather than design
+defects.

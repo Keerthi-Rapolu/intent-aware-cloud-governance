@@ -1,39 +1,28 @@
-% Exp 3 anomaly-detection interpretation
 % Authors: Keerthi Rapolu & Sreeja Katta
 
-The F1 improvement from 0.605 to 0.761 is driven primarily by recall: the
+The F1 improvement from 0.605 to 0.761 is driven primarily by recall. The
 IFS-based detector captures anomalous workloads that the CPU-threshold baseline
-classifies as normal because their average utilization does not cross the
-detection boundary. This pattern is consistent with the design intent of IFS. A
-workload that finishes early and idles, uses fewer resources than requested, or
-runs a materially different computation than its description implies can remain
-below the utilization alert threshold while still producing measurable
-intent-behavior divergence. The CPU threshold treats all of these as acceptable
-outcomes; IFS does not.
+classifies as normal because their utilization does not breach the detection
+boundary. This pattern is consistent with the design intent of IFS: a workload
+that finishes early and idles, consumes fewer resources than requested, or
+executes a materially different computation than its description implies can
+remain below the utilization alert threshold while still producing measurable
+intent-behavior divergence.
 
-The mismatch-subgroup result is the important nuance. Among workloads flagged as
-type-mismatched by intent inference, anomaly rates are higher and mean IFS is
-lower than in the non-mismatch group, consistent with the hypothesis that
-declared-to-inferred type divergence predicts runtime divergence. However, the
-anomaly rate difference across the two subgroups is not as large as the overall
-F1 improvement might suggest. Type mismatch is a useful but not sufficient
-predictor of anomalous behavior: some type-mismatched workloads execute
-normally, and some correctly-typed workloads still diverge at runtime. The
-subgroup result therefore supports the use of IFS as a composite detector rather
-than reducing detection to a single structural feature.
+The mismatch-subgroup result adds an important qualification. Among workloads
+flagged as type-mismatched by intent inference, anomaly rates are higher and
+mean IFS is lower than in the non-mismatch group, consistent with the hypothesis
+that declared-to-inferred type divergence predicts runtime divergence. However,
+the anomaly rate difference across subgroups is not large enough for type
+mismatch alone to serve as a reliable detection signal. The subgroup result
+supports IFS as a composite detector rather than suggesting that any single
+structural feature is sufficient.
 
-The precision tradeoff is also honest. IFS precision on this benchmark is lower
-than the CPU-threshold baseline, which means intent-aware detection produces
-more false positives per true positive. This is a consequence of IFS operating
-on a lower detection threshold: it flags misaligned workloads earlier and more
-broadly than a utilization gate would. In a production setting, higher false
-positive rates translate to unnecessary intervention overhead, so the appropriate
-operating point depends on the cost structure of the environment. The threshold
-sweep results show that an operator can recover precision by raising $\theta_{\mathrm{ifs}}$
-at the cost of recall, which gives the system a practical tuning handle once
-deployed.
-
-Taken together, the Exp~3 result is evidence that workload-alignment signals
-improve early anomaly detection relative to a utilization baseline, but it is
-not evidence that intent-aware detection eliminates false positives or generalizes
-without calibration to production workload populations.
+The precision tradeoff is also worth stating directly. IFS precision on this
+benchmark is lower than the CPU-threshold baseline, meaning intent-aware
+detection produces more false positives per true positive. This is a consequence
+of IFS operating at broader sensitivity: it flags misaligned workloads earlier
+and more broadly than a utilization gate would. The threshold sweep shows that an
+operator can recover precision by raising $\theta_{\mathrm{ifs}}$ at the cost of
+recall, which provides a practical tuning handle once deployed against a
+production workload population.
