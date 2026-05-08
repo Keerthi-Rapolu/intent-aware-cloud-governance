@@ -4,23 +4,39 @@
 
 <div align="center">
 
-![Research Prototype](https://img.shields.io/badge/Research_Prototype-Evaluation-blue)
-![Streamlit Demo](https://img.shields.io/badge/Streamlit-Demo-ff4b4b?logo=streamlit&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
-![FAISS](https://img.shields.io/badge/FAISS-KNN-0b7285)
-![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-f7c948)
-![Cloud Governance](https://img.shields.io/badge/Cloud-Governance-0f766e)
+![Research Prototype](https://img.shields.io/badge/Research_Prototype-Evaluation-7c3aed)
+![Streamlit Demo](https://img.shields.io/badge/Streamlit-Demo-e11d48?logo=streamlit&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11-3b82f6?logo=python&logoColor=white)
+![FAISS](https://img.shields.io/badge/FAISS-KNN-0d9488)
+![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-d97706)
+![Cloud Governance](https://img.shields.io/badge/Cloud-Governance-0891b2)
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Launch-0ea5e9?style=for-the-badge&logo=streamlit&logoColor=white)](https://intent-aware-cloud-governance.streamlit.app/)
-[![Design Document](https://img.shields.io/badge/Design-Document-111827?style=for-the-badge)](IACG_Design_Document.md)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Launch-2563eb?style=for-the-badge&logo=streamlit&logoColor=white)](https://intent-aware-cloud-governance.streamlit.app/)
+[![Design Document](https://img.shields.io/badge/Design-Document-374151?style=for-the-badge)](IACG_Design_Document.md)
 [![Experiments](https://img.shields.io/badge/Research-Experiments-1d4ed8?style=for-the-badge)](docs/EXPERIMENTS.md)
-[![Source Code](https://img.shields.io/badge/Source-Code-059669?style=for-the-badge&logo=github&logoColor=white)](./)
 
 </div>
 
-> PBCP is a controlled cloud systems research prototype and evaluation benchmark. It is not a production governance platform. Production deployment would require calibration against an organization's own telemetry and enforcement stack.
+> **Research Prototype** — PBCP is a controlled cloud systems research prototype and evaluation benchmark. It is not a production governance platform. Production deployment would require calibration against an organization's own telemetry and enforcement stack.
 
-[![Launch Live Demo](assets/pbcp_demo_banner.png)](https://intent-aware-cloud-governance.streamlit.app/)
+---
+
+## Live Demo
+
+<p align="center"><img src="assets/runner.gif" width="720" alt=""></p>
+
+[![Launch PBCP Live Demo](assets/pbcp_demo_banner.png)](https://intent-aware-cloud-governance.streamlit.app/)
+
+The Streamlit demo includes:
+
+| Section | What it shows |
+|---|---|
+| Overview | Architecture, KPIs, comparison with existing approaches |
+| Prevention Engine | Intent inference, pre-execution simulation, AUTO_CORRECT / SUGGEST / PASS decisions |
+| Runtime & Savings | CPS, IFS, intervention timeline, workload type breakdown |
+| Learning System | Phase 3 convergence, policy synthesis, feedback loop |
+
+---
 
 ## What PBCP Does
 
@@ -37,7 +53,7 @@ Example: a team submits a 20-node cluster for a short ETL workload. The job fini
 
 ## Architecture
 
-PBCP is organized around a simple loop: **Prevent -> Correct -> Learn**.
+PBCP is organized around a simple loop: **Prevent → Correct → Learn**.
 
 ```text
 Natural Language Workload
@@ -54,31 +70,31 @@ Natural Language Workload
 - **Correct**: apply runtime actions when observed behavior diverges from declared intent.
 - **Learn**: update policies and improve prevention quality over repeated generations.
 
-## Evaluation Notes
+> **Metric note:** IFS is defined as cosine similarity between intent and behavior embeddings. Dashboard sub-scores are interpretability aids only — not the canonical research metric.
 
-- **IFS** is the cosine similarity between intent embeddings and behavior embeddings.
-- Dashboard sub-scores provide interpretability only.
+![PBCP Architecture](assets/pbcp_architecture.svg)
 
 ## Key Results
 
-| Experiment | Result |
-| --- | --- |
-| Calibration | Utilization MAE 0.054 |
-| Pre-Provision | Showcase CPS 0.500 |
-| Runtime | $97.92 prevented in runaway ML scenario |
-| IBD Detection | IFS F1 0.761 vs CPU baseline 0.605 |
-| System Roll-up | Valid CPS 0.559 · ESR 0.981 |
-| Convergence | Peak CPS 0.733 · 58× vs no-Phase-3 |
+| Experiment | Metric | Value |
+|---|---|---|
+| Exp 0 — Calibration | Utilization MAE | 0.054 |
+| Exp 0 — Calibration | Cost rel-RMSE | 0.306 † |
+| Exp 1 — Pre-Provision | Showcase CPS (20→10 nodes) | 0.500 |
+| Exp 2 — Runtime | Scenario C prevented cost | $97.92 |
+| Exp 3 — IBD Detection | IFS Detector F1 | 0.761 |
+| Exp 3 — IBD Detection | CPU-threshold baseline F1 | 0.605 |
+| Exp 5 — System Roll-up | Valid CPS | 0.559 |
+| Exp 5 — System Roll-up | ESR | 0.981 |
+| Exp 6 — Convergence | Peak Full PBCP CPS | 0.733 |
+| Exp 6 — Convergence | Peak No-Phase-3 CPS | 0.090 |
+| Exp 6 — Convergence | Improvement vs. no-Phase-3 | **8.1×** |
 
-## Dashboard
+> † Cost rel-RMSE reflects submission-time duration uncertainty (±25% by design).
+> Pre-execution cost prediction inherently carries this uncertainty; 0.306 is within
+> the expected range for submission-time models.
 
-| Overview | Prevention Engine |
-| --- | --- |
-| [![Overview](assets/screenshots/overview.png)](https://intent-aware-cloud-governance.streamlit.app/) | [![Prevention Engine](assets/screenshots/prevention_engine.png)](https://intent-aware-cloud-governance.streamlit.app/) |
-
-| Runtime & Savings | Learning System |
-| --- | --- |
-| [![Runtime Savings](assets/screenshots/runtime_savings.png)](https://intent-aware-cloud-governance.streamlit.app/) | [![Learning System](assets/screenshots/learning_system.png)](https://intent-aware-cloud-governance.streamlit.app/) |
+---
 
 ## Quick Start
 
@@ -97,20 +113,38 @@ python -m evaluation.benchmark
 streamlit run app/app.py
 ```
 
+> The hosted demo uses keyword-based intent inference in place of DistilBERT; FAISS KNN retrieval
+> and the full NLP pipeline are only available when running locally.
+
+---
+
 ## Repository Structure
 
-- `intent_model/`
-- `simulation_engine/`
-- `policy_engine/`
-- `runtime_optimizer/`
-- `cps_metrics/`
-- `experiments/`
-- `app/`
-- `data/`
-- `config/`
+```
+IACG/
+├── intent_model/           # Intent inference: DistilBERT + FAISS KNN
+├── simulation_engine/      # Pre-execution cost simulation + EV model
+├── policy_engine/          # Policy registry + learner + enforcer
+├── runtime_optimizer/      # Runtime anomaly detection + correction
+├── cps_metrics/            # CPS + IFS tracking
+├── experiments/            # Exp 0, 1, 2, 3, 5, 6 scripts
+├── app/                    # Streamlit 4-page research demo
+│   ├── app.py                  Entry point
+│   ├── components/
+│   │   ├── data_loader.py      Cached DuckDB queries (@st.cache_data)
+│   │   └── charts.py           Plotly chart builders
+│   └── pages/
+│       ├── overview.py         Architecture, KPIs, comparison table
+│       ├── prevention_engine.py  Live Demo + Workload Catalogue + Anomaly Detection
+│       ├── runtime_savings.py  CPS/IFS dashboard + Intervention timeline
+│       └── learning_system.py  Convergence study + Feedback loop
+├── data/                   # Synthetic 500-workload benchmark generator
+└── config/                 # Cloud pricing, simulation, policy, CPS parameters
+```
 
 ## Further Reading
 
+- [Design Document](IACG_Design_Document.md)
 - [Technical Details](docs/TECHNICAL_DETAILS.md)
 - [Experiments](docs/EXPERIMENTS.md)
 - [Dashboard Guide](docs/DASHBOARD_GUIDE.md)
@@ -118,7 +152,9 @@ streamlit run app/app.py
 ## Authors
 
 - **Keerthi Rapolu** — First Author; system architecture, intent inference, pre-execution simulation, EV intervention model, runtime optimizer, CPS/ESR evaluation, Streamlit research demo.
+  Modules: `intent_model/` · `simulation_engine/` · `policy_engine/` · `runtime_optimizer/` · `cps_metrics/` · `app/`
 - **Sreeja Katta** — Second Author; Intent-Fit Score subsystem, anomaly RCA contributions, policy feedback loop support.
+  Modules: `ifs/` · `anomaly_rca/`
 
 ## Citation
 
@@ -127,6 +163,6 @@ streamlit run app/app.py
   title  = {PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance},
   author = {Rapolu, Keerthi and Katta, Sreeja},
   year   = {2026},
-  note   = {IACG v2.0 Research Prototype; Manuscript under review}
+  note   = {IACG v2.0 Research Prototype. Manuscript under review.}
 }
 ```
