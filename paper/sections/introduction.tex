@@ -8,14 +8,20 @@ The core insight of this paper is that cloud waste is often caused by divergence
 
 We present \emph{Pre-Billing Cost Prevention} (PBCP), an intent-aware cloud governance framework that moves the intervention point to the left of billing. PBCP infers workload intent from natural-language descriptions, retrieves similar historical workloads, predicts likely resource divergence through pre-execution simulation, and applies decision-theoretic interventions such as \texttt{BLOCK}, \texttt{AUTO\_CORRECT}, \texttt{SUGGEST}, or \texttt{PASS} before or during execution.
 
-PBCP is built around two complementary metrics. The first is \emph{Cost Prevention Score} (CPS), which measures how much waste was prevented before billing. The second is \emph{Intent-Fit Score} (IFS), which measures how well observed runtime behavior aligned with declared workload intent. Together with Execution Success Rate (ESR), these metrics separate prevention value from system aggressiveness and make system-level evaluation more defensible.
+PBCP is evaluated with three complementary metrics. \emph{Cost Prevention Score}
+(CPS) measures how much waste was prevented before billing, \emph{Execution
+Success Rate} (ESR) measures whether intervention preserved useful execution,
+and \emph{Intent-Fit Score} (IFS) measures workload alignment between declared
+intent and observed runtime behavior. Together, these metrics separate
+prevention value from system aggressiveness and make system-level evaluation
+more defensible.
 
 This paper makes four contributions:
 \begin{itemize}
   \item A pre-billing governance architecture that reframes cloud cost control as an early-intervention systems problem rather than a post-billing reporting problem.
   \item A decision-theoretic intervention engine that weighs predicted waste against the cost of governance actions before execution begins.
   \item An Intent-Behavior Discrepancy (IBD) framework, operationalized through IFS, for modeling divergence between workload intent and runtime behavior.
-  \item An IFS-based anomaly-detection method for identifying intent-behavior divergence earlier than utilization-only baselines.
+  \item A controlled evaluation benchmark spanning 500 workloads and 28{,}423 runs that measures pre-billing prevention, runtime governance, anomaly detection, and policy learning under one governance-timing framework.
 \end{itemize}
 
 We evaluate these contributions on a controlled benchmark of 500 workloads and 28{,}423 runs. The rest of the paper explains why existing systems fail under this timing model, presents the PBCP design as a Prevent~$\rightarrow$~Correct~$\rightarrow$~Learn pipeline, and evaluates whether early intent-aware intervention improves prevention quality over reactive baselines.
