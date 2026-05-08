@@ -537,6 +537,359 @@ Sreeja's production implementations replace the stubs — tests validate her wor
 
 ---
 
+## Phase 9 - Paper Writing Plan (Lead Author)
+
+> **This paper is a systems paper, not a dashboard paper.**  
+> The central claim is about **governance timing**: existing systems act too late, while PBCP moves intervention before billing.
+
+### 9.1 Lock the Core Story First
+
+- [x] Open the paper with one concrete failure case:
+  - 20-node ETL or Spark cluster
+  - workload finishes early
+  - cluster remains idle
+  - alert arrives after cost is already incurred
+- [x] Keep the main problem statement consistent throughout:
+  - current cloud governance detects waste after billing
+  - cloud waste is fundamentally an **intent-behavior divergence** problem
+  - if intent can be inferred early and future waste can be simulated, intervention can happen before cost is incurred
+- [x] Do **not** position the paper as "dashboards + metrics"
+- [x] Do **not** position Streamlit or the UI as a research contribution
+
+### 9.2 Four Research Contributions (use this exact split)
+
+- [x] Aligned the manuscript contribution list in `paper/sections/introduction.tex` to this exact four-way split.
+
+| Contribution | Owner |
+|---|---|
+| Pre-billing governance architecture | Keerthi |
+| Decision-theoretic intervention model | Keerthi |
+| Intent-Behavior Discrepancy framework | Sreeja |
+| IFS-based anomaly detection | Sreeja |
+
+### 9.3 Recommended Paper Structure
+
+- [x] Created the section-wise LaTeX manuscript structure in `paper/main.tex` and `paper/sections/` using this paper order.
+
+Use this paper shape unless the advisor asks for a different venue template.
+
+| Section | What it must do | Owner |
+|---|---|---|
+| 1. Abstract | Problem -> gap -> approach -> contribution -> results; write last | Keerthi |
+| 2. Introduction | Tell the 20-node waste story; define governance timing problem; list contributions explicitly | Keerthi |
+| 3. Motivation | Explain why existing systems fail: post-execution blindness, semantic ignorance, advisory-only governance | Keerthi |
+| 4. Related Work | Organize by system category, not by vendor product tour | Keerthi |
+| 5. System Design | Present a pipeline narrative: Prevent -> Correct -> Learn | Keerthi lead, Sreeja on 5.7 |
+| 6. Metrics | Keep short; CPS says how much waste was prevented, IFS says why waste happened | Keerthi lead, Sreeja input |
+| 7. Evaluation | Each experiment answers one question | Keerthi lead, Sreeja on Exp 3 / IFS text |
+| 8. Discussion | Admit limitations openly; synthetic benchmark, no enterprise telemetry, no production enforcement deployment | Both |
+| 9. Conclusion | One paragraph: problem, insight, results, implication | Keerthi |
+
+### 9.4 Writing Ownership by Section
+
+Use this division when drafting the manuscript.
+
+- [x] Reflected this ownership split directly in the LaTeX section scaffolds under `paper/sections/` with Keerthi-led sections and explicit Sreeja ownership notes for Section 5.7, IFS framing, and Exp 3.
+
+| Section / Subsection | Owner |
+|---|---|
+| Intro | Keerthi |
+| Related Work | Keerthi |
+| 5.1 Overview | Keerthi |
+| 5.2 Intent Inference | Keerthi |
+| 5.3 Historical Similarity Retrieval | Keerthi |
+| 5.4 Pre-Execution Simulation | Keerthi |
+| 5.5 EV Decision Engine | Keerthi |
+| 5.6 Runtime Governance | Keerthi |
+| 5.7 Intent-Behavior Discrepancy / IFS | Sreeja |
+| 5.8 Policy Learning Loop | Keerthi |
+| Section 6 CPS / ESR framing | Keerthi |
+| Section 6 IFS framing | Sreeja |
+| Exp 0 / 1 / 2 / 6 write-up | Keerthi |
+| Exp 3 anomaly evaluation | Sreeja |
+| Exp 5 dual-metric interpretation | Shared |
+| Discussion / limitations | Shared |
+
+### 9.5 Section-by-Section Drafting Instructions
+
+- [x] Converted these drafting rules into real manuscript scaffolds in:
+  - `paper/sections/related_work.tex`
+  - `paper/sections/system_design.tex`
+  - `paper/sections/metrics.tex`
+  - `paper/sections/evaluation.tex`
+  - `paper/sections/discussion.tex`
+  - `paper/sections/conclusion.tex`
+- [ ] **Abstract**: write this last. Use five beats only:
+  - problem
+  - gap
+  - approach
+  - named contributions
+  - headline results
+- [x] **Introduction**:
+  - start with the concrete waste scenario
+  - define the real problem as **governance timing**
+  - state the core insight: cloud waste is often caused by divergence between declared intent and actual runtime behavior
+  - introduce PBCP at a high level only
+  - end with an explicit contribution list
+- [x] **Motivation**:
+  - 3.1 Post-execution blindness
+  - 3.2 Semantic ignorance
+  - 3.3 Advisory-only governance
+  - keep this analytical, not promotional
+- [~] **Related Work**:
+  - use categories of systems
+  - reactive cloud optimization
+  - utilization-only anomaly detection
+  - policy governance systems
+  - AIOps systems
+  - keep vendor detail short
+- [~] **System Design**:
+  - write as one pipeline
+  - 5.1 Overview
+  - 5.2 Intent Inference
+  - 5.3 Historical Similarity Retrieval
+  - 5.4 Pre-Execution Simulation
+  - 5.5 EV Decision Engine
+  - 5.6 Runtime Governance
+  - 5.7 Intent-Behavior Discrepancy
+  - 5.8 Policy Learning Loop
+- [~] **Metrics**:
+  - keep this section short
+  - CPS = how much waste was prevented
+  - IFS = why the waste happened
+  - ESR = anti-gaming execution constraint
+- [~] **Evaluation**:
+  - every experiment must answer one explicit question
+  - Exp 0: Can simulation predict utilization accurately?
+  - Exp 1: Can pre-provision intervention reduce waste?
+  - Exp 2: Can runtime governance catch hidden failures?
+  - Exp 3: Does IFS outperform CPU-threshold detection?
+  - Exp 5: What is overall system effectiveness?
+  - Exp 6: Does policy learning improve over time?
+- [~] **Discussion**:
+  - include limitations directly
+  - synthetic benchmark
+  - no real enterprise telemetry
+  - policy-learning scale still small
+  - no production enforcement deployment
+  - then give future work: Databricks, Kubernetes, telemetry calibration, online learning
+- [~] **Conclusion**:
+  - keep to one paragraph
+  - do not repeat the full paper
+
+### 9.6 Non-Negotiable Writing Rules
+
+- [x] Enforced these rules in the current LaTeX manuscript scaffolds: the paper text stays centered on governance timing and intent-behavior divergence, without UI, dashboard, or AI-marketing framing.
+- [x] Keep one central story across all sections
+- [x] Every section must answer: **Why does this system exist?**
+- [x] Avoid AI-marketing language:
+  - "revolutionary"
+  - "cutting-edge"
+  - "intelligent AI platform"
+- [x] Avoid over-selling; be precise and measured
+- [x] Do not make the dashboard, screenshots, or Streamlit pages sound like contributions
+- [x] Keep the strongest framing visible throughout:
+  - governance timing
+  - intent-behavior divergence
+
+### 9.7 Paper Integration Checklist with Sreeja
+
+- [~] Standardized the manuscript-side terminology and discussion scaffolds for shared concepts:
+  - `paper/sections/introduction.tex`
+  - `paper/sections/system_design.tex`
+  - `paper/sections/metrics.tex`
+  - `paper/sections/evaluation.tex`
+  - `paper/sections/discussion.tex`
+- [ ] Ask Sreeja for the final draft text for:
+  - IFS definition and rationale
+  - IBD framing
+  - Exp 3 anomaly evaluation
+  - RCA / feedback-loop wording
+- [x] Keep terminology consistent across both authors:
+  - PBCP
+  - IFS
+  - IBD
+  - CPS
+  - ESR
+- [x] Handle the Exp 3 mismatch-subgroup near-fail honestly in Discussion, not hidden in a footnote
+- [ ] Write the abstract only after all section text and headline numbers are locked
+
+### 9.8 Paper Production Workflow (LaTeX only)
+
+> **Use LaTeX. Do not use Word, Google Docs, or a Markdown-only workflow for the paper.**  
+> Treat the manuscript like a systems-conference submission from the beginning.
+
+- [x] Established `paper/main.tex` as the manuscript source of truth and kept the paper workflow in LaTeX.
+- [x] Use LaTeX as the only source of truth for the paper
+- [x] Do **not** draft the final paper in:
+  - `.docx`
+  - Google Docs
+  - a Markdown-only workflow
+- [x] Use ACM `acmart` unless the advisor or venue explicitly asks for a different template
+
+### 9.9 Paper Directory Layout
+
+Create a dedicated paper workspace in the repo root:
+
+```text
+paper/
+├── main.tex
+├── sections/
+│   ├── abstract.tex
+│   ├── introduction.tex
+│   ├── motivation.tex
+│   ├── related_work.tex
+│   ├── system_design.tex
+│   ├── metrics.tex
+│   ├── evaluation.tex
+│   ├── discussion.tex
+│   └── conclusion.tex
+├── figures/
+├── tables/
+├── bibliography.bib
+├── acmart.cls
+└── Makefile
+```
+
+- [x] Created the dedicated `paper/` workspace with split section files, `figures/`, `tables/`, `bibliography.bib`, and `Makefile`.
+- [x] Use this split structure, not one giant `paper.tex`
+- [x] Keep section text in `paper/sections/*.tex`
+- [x] Keep generated figures in `paper/figures/`
+- [x] Keep generated LaTeX tables in `paper/tables/`
+- [x] Keep references in `paper/bibliography.bib`
+- [x] `main.tex` uses `\documentclass[sigconf]{acmart}`; rely on the local TeX distribution's `acmart.cls` unless a venue workflow explicitly requires vendoring the class file.
+
+### 9.10 Minimal Main File
+
+Use this as the starting `paper/main.tex`:
+
+```tex
+\documentclass[sigconf]{acmart}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{PBCP: Pre-Billing Cost Prevention for Intent-Aware Cloud Governance}
+
+\author{Keerthi Rapolu}
+\author{Sreeja Katta}
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/motivation}
+\input{sections/related_work}
+\input{sections/system_design}
+\input{sections/metrics}
+\input{sections/evaluation}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bibliography}
+
+\end{document}
+```
+
+- [x] `paper/main.tex` now matches this split `acmart` starter closely and is the active manuscript entrypoint.
+
+### 9.11 Tooling and Editor Setup
+
+- [x] Added workspace recommendations in `.vscode/extensions.json` for `LaTeX Workshop` and `LTeX`.
+- [x] Added `.vscode/settings.json` for on-save LaTeX build and in-editor PDF preview defaults.
+- [x] Use **VSCode** for paper editing
+- [x] Install **LaTeX Workshop**
+- [x] Install **LTeX** optionally for grammar and spelling
+- [x] Build and preview the PDF continuously while writing
+
+### 9.12 File Format Rules
+
+| Purpose | Format |
+|---|---|
+| Main paper | `.tex` |
+| References | `.bib` |
+| Figures | `.pdf` or `.svg` |
+| Tables | `.tex` |
+| Notes / scratch drafting | `.md` optional only |
+
+- [x] Documented these rules in `paper/README.md` so the paper workspace has explicit format conventions.
+- [x] Use vector figures whenever possible
+- [x] Prefer `PDF` or `SVG`
+- [x] Avoid JPEG screenshots in the final paper
+- [x] Keep tables as separate LaTeX fragments and include them with `\input{}`
+
+### 9.13 Best Writing Order
+
+Do **not** draft the paper in narrative order.
+
+| Order | Section |
+|---|---|
+| 1 | Evaluation |
+| 2 | System Design |
+| 3 | Metrics |
+| 4 | Related Work |
+| 5 | Discussion |
+| 6 | Introduction |
+| 7 | Abstract |
+
+- [x] Recorded this writing order in `paper/README.md` and kept the manuscript scaffolds consistent with it.
+- [x] Start with evaluation because the experiments define the true story
+- [x] Draft the introduction only after the claims are constrained by the results
+- [x] Write the abstract last
+
+### 9.14 Collaboration and Git Workflow
+
+- [x] Created and switched the repo to the dedicated `paper-writing` branch for manuscript work.
+- [x] Use Git branches for paper writing from the start
+- [x] Suggested branch names:
+  - `paper-writing`
+  - `sreeja-anomaly-section`
+- [x] Keep section files separate so diffs stay clean
+- [x] Review paper changes the same way as code changes
+
+### 9.15 Authorship File Ownership
+
+Keerthi default ownership:
+
+```text
+paper/sections/introduction.tex
+paper/sections/motivation.tex
+paper/sections/system_design.tex
+paper/sections/metrics.tex
+paper/sections/evaluation.tex
+```
+
+Sreeja-owned inserts or subsections:
+
+```text
+paper/sections/ifs.tex
+paper/sections/anomaly_detection.tex
+paper/sections/rca.tex
+```
+
+- [x] Created the Sreeja-owned insert files (`ifs.tex`, `anomaly_detection.tex`, `rca.tex`) and merged them into the shared manuscript flow with `\input{}` from `system_design.tex`, `evaluation.tex`, and `discussion.tex`.
+- [x] Merge Sreeja-owned sections into the final evaluation / system-design structure without breaking the single paper story
+- [x] Structural check passed: all manuscript `\input{}` references resolve to real files under `paper/sections/`
+
+### 9.16 Final Writing Advice
+
+- [x] Captured this drafting discipline in `paper/README.md` and kept the current manuscript in a scaffold-first, technically precise state.
+- [x] Do not chase "perfect academic English" in the first pass
+- [x] Write technically precise prose first
+- [x] Polish wording only after the structure and claims are stable
+- [x] Lean on your actual strength:
+  - systems thinking
+  - architecture reasoning
+  - evaluation structure
+- [ ] Full PDF compile still needs local TeX tooling; `pdflatex` is not installed in this environment
+
+---
+
 ## Completion Gates
 
 | Phase | Gate |

@@ -19,6 +19,33 @@ All of Keerthi's modules (Phases 0–6) are complete. Your work plugs into them 
 
 ---
 
+## Viewing the Paper (LaTeX Setup)
+
+To compile and read `paper/main.pdf` locally you need two things:
+
+**1. Install MiKTeX** (LaTeX distribution for Windows)
+- Download from: https://miktex.org/download
+- During first run, choose **Remote package repository (Internet)** when prompted
+- MiKTeX auto-installs missing packages on the fly
+
+**2. Install LaTeX Workshop in VS Code**
+- Extensions panel → search "LaTeX Workshop" → install
+- Open `paper/main.tex` → press `Ctrl+Alt+B` to build, then `Ctrl+Alt+V` to view PDF in the side panel
+
+**3. Compile from the terminal** (alternatively)
+```bash
+cd c:\Projects\IACG\paper
+make all          # runs pdflatex + bibtex + pdflatex + pdflatex
+```
+Or just:
+```bash
+latexmk -pdf paper/main.tex
+```
+
+> **Note:** `main.tex` already contains `\PassOptionsToPackage{expansion=false}{microtype}` at the top — this is required for MiKTeX on Windows and must stay in place.
+
+---
+
 ## What the System Does (1-minute version)
 
 PBCP prevents cloud over-provisioning **before billing** happens. When a team submits a workload:
@@ -432,7 +459,7 @@ Write tests that verify:
 
 ---
 
-## Phase G — Phase 7 End-to-End Integration Test  *(Coordinate with Keerthi)*
+## Phase G - Phase 7 End-to-End Integration Test  *(Coordinate with Keerthi)*
 
 Once Phases A–F are done, Keerthi will add tests to `tests/test_integration.py` that cover:
 
@@ -442,6 +469,186 @@ Once Phases A–F are done, Keerthi will add tests to `tests/test_integration.py
 - Full pipeline: description → intent → simulation → guardrail → IFS → CPS
 
 Coordinate with Keerthi on the final pipeline call sequence before writing test fixtures.
+
+---
+
+## Phase H - Paper Writing Contributions (Co-Author)
+
+> **Your paper role is not "extra metrics."**  
+> Your work explains the paper's second core idea: cloud waste is often an **intent-behavior divergence** problem, and IFS gives the system a way to detect that divergence early.
+
+### H.1 Your Four Research-Story Anchors
+
+- [ ] Keep the paper story aligned with Keerthi's lead framing:
+  - existing systems act after billing
+  - PBCP moves intervention before billing
+  - waste is often caused by mismatch between declared intent and actual behavior
+- [ ] Your two direct technical contributions must stay explicit:
+  - Intent-Behavior Discrepancy (IBD) framework
+  - IFS-based anomaly detection
+- [ ] Your writing should strengthen the paper's causal story:
+  - CPS explains **how much** waste was prevented
+  - IFS explains **why** the waste existed
+
+### H.2 Section Ownership for Your Writing
+
+| Section / Subsection | Your responsibility |
+|---|---|
+| 5.7 Intent-Behavior Discrepancy | Define the concept and why it matters |
+| Section 6 IFS text | Keep metric explanation short and principled |
+| Exp 3 evaluation | Write the full anomaly-detection interpretation |
+| Exp 5 IFS interpretation | Explain what system-wide IFS means and what it does not mean |
+| RCA taxonomy / feedback loop support | Contribute supporting text to system design / discussion |
+| Discussion limitations | Help write the honest limits around synthetic data and anomaly interpretation |
+
+### H.3 How to Write Your Parts
+
+- [ ] **Intent-Behavior Discrepancy subsection**:
+  - define the problem cleanly
+  - do not frame it as "another metric"
+  - explain that low IFS is an early signal of semantic mismatch between submitted intent and runtime behavior
+- [ ] **IFS subsection**:
+  - keep the definition clear and compact
+  - describe IFS as a semantic alignment signal between workload intent and runtime behavior
+  - avoid turning the metrics section into a long math derivation
+- [ ] **Exp 3 section**:
+  - state the evaluation question explicitly:
+    - Does IFS outperform CPU-threshold detection?
+  - compare IFS detector vs CPU-threshold baseline directly
+  - emphasize F1 improvement
+  - discuss false-positive tradeoff honestly
+- [ ] **Exp 5 support text**:
+  - explain how IFS complements CPS and ESR in the roll-up
+  - do not over-claim that IFS alone proves prevention quality
+- [ ] **Discussion support**:
+  - acknowledge benchmark is synthetic
+  - acknowledge mismatch subgroup result is mixed
+  - explain that Gate 2 miss is small enough to discuss as a nuance, not a hidden defect
+
+### H.4 Experiment-to-Question Mapping (keep this language)
+
+Use these question statements when writing results text:
+
+| Experiment | Question |
+|---|---|
+| Exp 3 | Does IFS outperform CPU-threshold detection? |
+| Exp 5 | What does the dual-metric system roll-up say about overall effectiveness? |
+
+When writing Exp 3:
+
+- [ ] Lead with the question
+- [ ] Then the detector comparison
+- [ ] Then the mismatch subgroup nuance
+- [ ] Then the implication for early anomaly detection
+
+### H.5 Writing Rules for Your Sections
+
+- [ ] Be analytical, not promotional
+- [ ] Avoid vendor-product descriptions unless needed for related work
+- [ ] Avoid buzzwords like:
+  - "revolutionary"
+  - "next-generation"
+  - "AI-powered intelligence platform"
+- [ ] Use reviewer-facing language:
+  - what signal is measured
+  - what baseline is compared
+  - what limitation remains
+- [ ] Keep the central systems claim visible:
+  - PBCP exists because current governance acts too late
+
+### H.6 Deliverables to Hand Off to Keerthi
+
+- [ ] Final draft paragraph for **Section 5.7 Intent-Behavior Discrepancy**
+- [ ] Final draft paragraph for **Section 6 IFS metric explanation**
+- [ ] Full write-up for **Exp 3 anomaly evaluation**
+- [ ] Supporting interpretation bullets for **Exp 5 dual-metric roll-up**
+- [ ] 3-5 sentence **Discussion limitations** text covering:
+  - synthetic benchmark
+  - no enterprise telemetry
+  - mixed mismatch-subgroup result
+
+### H.7 Do Not Let the Paper Drift
+
+- [ ] Do not let the anomaly section become a dashboard tour
+- [ ] Do not present UI pages as contributions
+- [ ] Do not let IFS become disconnected from the main story
+- [ ] Re-anchor each section to the core paper claim:
+  - governance timing is the systems failure
+  - intent-behavior divergence is the hidden cause
+  - pre-billing intervention is the systems answer
+
+### H.8 Paper Writing Format and Collaboration Rules
+
+> **Use LaTeX for all manuscript writing.**  
+> Do not write your final paper sections in Word, Google Docs, or a Markdown-only flow.
+
+- [ ] Write your paper sections as `.tex` files only
+- [ ] Do **not** deliver final manuscript text in:
+  - `.docx`
+  - Google Docs
+  - standalone Markdown intended to be the paper source
+- [ ] Coordinate with Keerthi inside the shared `paper/` directory structure
+
+Use this paper layout:
+
+```text
+paper/
+├── main.tex
+├── sections/
+├── figures/
+├── tables/
+├── bibliography.bib
+└── Makefile
+```
+
+### H.9 Your File Ownership in LaTeX
+
+- [ ] Draft your contributions as separate `.tex` files or clearly separated inserts
+- [ ] Default ownership:
+
+```text
+paper/sections/ifs.tex
+paper/sections/anomaly_detection.tex
+paper/sections/rca.tex
+```
+
+- [ ] Hand those sections to Keerthi for integration into:
+  - `system_design.tex`
+  - `metrics.tex`
+  - `evaluation.tex`
+  - `discussion.tex`
+
+### H.10 Figure and Table Format Rules
+
+- [ ] Use vector outputs when possible
+- [ ] Preferred figure formats:
+  - `.pdf`
+  - `.svg`
+- [ ] Do not rely on screenshots for paper figures
+- [ ] Keep paper tables as standalone `.tex` fragments for `\input{}`
+- [ ] Keep captions and figure references consistent with the manuscript text
+
+### H.11 Writing Order for Your Sections
+
+- [ ] Write Exp 3 and Exp 5 interpretation before trying to polish introduction-style prose
+- [ ] Start from evidence first:
+  - detector comparison
+  - mismatch subgroup nuance
+  - IFS interpretation
+  - RCA / feedback implications
+- [ ] Only polish language after the technical claim is stable
+
+### H.12 Collaboration Rules
+
+- [ ] Use Git branches for your paper-writing work
+- [ ] Keep your section diffs isolated and reviewable
+- [ ] Do not rewrite Keerthi's lead sections unless coordinating explicitly
+- [ ] Keep terminology consistent with the shared manuscript:
+  - PBCP
+  - IFS
+  - IBD
+  - CPS
+  - ESR
 
 ---
 

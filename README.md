@@ -23,7 +23,9 @@
 
 ## Live Demo
 
-[![Launch PBCP Live Demo](assets/pbcp_demo_banner.svg)](https://intent-aware-cloud-governance.streamlit.app/)
+<p align="center"><img src="assets/runner.gif" width="720" alt=""></p>
+
+[![Launch PBCP Live Demo](assets/pbcp_demo_banner.png)](https://intent-aware-cloud-governance.streamlit.app/)
 
 The Streamlit demo includes:
 
@@ -83,6 +85,8 @@ Natural Language Workload
 - **Learn**: update policies and improve prevention quality over repeated generations.
 
 > **Metric note:** IFS is defined as cosine similarity between intent and behavior embeddings. Dashboard sub-scores are interpretability aids only — not the canonical research metric.
+
+![PBCP Architecture](assets/pbcp_architecture.svg)
 
 ## Key Results
 
@@ -151,26 +155,6 @@ IACG/
 ├── data/                   # Synthetic 500-workload benchmark generator
 └── config/                 # Cloud pricing, simulation, policy, CPS parameters
 ```
-
-## Benchmark Data
-
-The evaluation uses a synthetic benchmark generated with `data/generate_dataset.py` (seed 42, 500 workloads, 28,423 runs).
-
-| Table | Rows | Description |
-|---|---|---|
-| `workload_intent` | 500 | Workload submissions with NL descriptions and intent labels |
-| `provisioned_config` | 500 | Node counts, instance types, over-provision flags |
-| `runtime_metrics` | 28,423 | Per-run CPU utilization, idle time, actual duration |
-| `cost_records` | 28,423 | Per-run compute and storage cost breakdown |
-| `cps_ifs_records` | 28,423 | CPS, IFS, stage, and intervention decision per run |
-| `historical_incidents` | — | Injected anomaly ground-truth labels |
-| `ai_workload_metrics` | — | LLM/ML-specific token budget and GPU utilization |
-| `policy_registry` | 8 | Built-in and learned governance policies |
-
-Stage breakdown (non-baseline runs): pre-provision 3,896 · runtime 840.
-Workload mix: ETL 130 · Adhoc 95 · ML Training 98 · LLM Pipeline 50 · Batch 77 · Streaming 50.
-
----
 
 ## Further Reading
 

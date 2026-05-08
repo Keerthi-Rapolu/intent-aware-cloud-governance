@@ -1,0 +1,24 @@
+\section{Motivation}
+
+Current cloud governance systems fail for structural reasons, not merely because
+they lack better telemetry or heuristics. Their failure mode is rooted in when
+they act, what signals they observe, and whether they can enforce intervention.
+
+\subsection{Post-execution blindness}
+
+Most cost governance systems observe waste only after execution has already begun or after billing has already closed. Utilization anomalies, idle clusters, and over-provisioned jobs can be reported accurately while still being economically unrecoverable. Once an inefficient workload has consumed hours of compute, the key prevention opportunity has already been lost.
+
+\subsection{Semantic ignorance}
+
+Reactive systems reason primarily from telemetry. CPU, memory, idle time, and cost spikes are useful signals, but they say little about whether the workload was provisioned consistently with its original intent. A short ad hoc analytics task, a recurring ETL job, and a latency-sensitive streaming service may exhibit overlapping runtime behavior while having very different governance expectations. Systems that ignore intent cannot distinguish expected high-cost behavior from avoidable misalignment early enough.
+
+\subsection{Advisory-only governance}
+
+Many production tools stop at recommendation. They identify underutilized resources, estimate potential savings, and ask operators to act later. Advisory workflows are valuable for reporting, but they do not close the prevention loop. A system designed for pre-billing control must be able to recommend, block, or auto-correct configurations before cost is incurred, not simply describe waste after the fact.
+
+These limitations motivate a governance model that reasons over workload intent
+before resource allocation, not only utilization after execution. If governance
+begins from intent rather than from stale billing evidence, and if likely
+resource divergence can be estimated before execution, then prevention becomes a
+systems problem with an enforceable decision point rather than a retrospective
+analytics problem.

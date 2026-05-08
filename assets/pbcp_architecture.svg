@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="470" viewBox="0 0 820 470">
+  <defs>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#94A3B8"/>
+    </marker>
+    <marker id="arr-fb" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#93C5FD"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="820" height="470" fill="#F8FAFC"/>
+
+  <!-- ── Input ──────────────────────────────────────────── -->
+  <rect x="270" y="14" width="280" height="34" rx="8"
+        fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="410" y="36" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="600" fill="#374151">Natural Language Workload</text>
+
+  <!-- arrow down -->
+  <line x1="410" y1="48" x2="410" y2="58" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ══ PREVENT group ══════════════════════════════════ -->
+  <rect x="248" y="58" width="324" height="152" rx="12"
+        fill="#DBEAFE" fill-opacity="0.28" stroke="#BFDBFE" stroke-width="1.5"/>
+  <text x="263" y="74"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="9" font-weight="700" letter-spacing="1.6" fill="#2563EB">PREVENT</text>
+
+  <!-- Intent Inference -->
+  <rect x="270" y="78" width="280" height="34" rx="7"
+        fill="#DBEAFE" stroke="#93C5FD" stroke-width="1.5"/>
+  <text x="410" y="100" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#1E40AF">Intent Inference</text>
+
+  <line x1="410" y1="112" x2="410" y2="122" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- FAISS KNN -->
+  <rect x="270" y="122" width="280" height="34" rx="7"
+        fill="#DBEAFE" stroke="#93C5FD" stroke-width="1.5"/>
+  <text x="410" y="144" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#1E40AF">FAISS KNN Retrieval</text>
+
+  <line x1="410" y1="156" x2="410" y2="166" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Pre-Execution Simulation -->
+  <rect x="270" y="166" width="280" height="34" rx="7"
+        fill="#DBEAFE" stroke="#93C5FD" stroke-width="1.5"/>
+  <text x="410" y="188" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#1E40AF">Pre-Execution Simulation</text>
+
+  <!-- arrow out of PREVENT -->
+  <line x1="410" y1="210" x2="410" y2="224" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ── EV Decision Engine (pill / wider rx) ─────────── -->
+  <rect x="270" y="224" width="280" height="34" rx="17"
+        fill="#FEF3C7" stroke="#FCD34D" stroke-width="1.5"/>
+  <text x="410" y="246" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="600" fill="#92400E">EV Decision Engine</text>
+
+  <!-- decision labels -->
+  <line x1="550" y1="241" x2="566" y2="241" stroke="#D1D5DB" stroke-width="1"/>
+  <text x="572" y="237"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="10" fill="#9CA3AF">BLOCK · AUTO_CORRECT</text>
+  <text x="572" y="251"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="10" fill="#9CA3AF">SUGGEST · PASS</text>
+
+  <!-- arrow down -->
+  <line x1="410" y1="258" x2="410" y2="272" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ══ CORRECT group ══════════════════════════════════ -->
+  <rect x="248" y="272" width="324" height="58" rx="12"
+        fill="#D1FAE5" fill-opacity="0.35" stroke="#A7F3D0" stroke-width="1.5"/>
+  <text x="263" y="287"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="9" font-weight="700" letter-spacing="1.6" fill="#059669">CORRECT</text>
+
+  <!-- Runtime Optimizer -->
+  <rect x="270" y="288" width="280" height="34" rx="7"
+        fill="#D1FAE5" stroke="#6EE7B7" stroke-width="1.5"/>
+  <text x="410" y="310" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#065F46">Runtime Optimizer</text>
+
+  <!-- arrow down -->
+  <line x1="410" y1="330" x2="410" y2="344" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ══ LEARN group ════════════════════════════════════ -->
+  <rect x="248" y="344" width="324" height="104" rx="12"
+        fill="#EDE9FE" fill-opacity="0.35" stroke="#DDD6FE" stroke-width="1.5"/>
+  <text x="263" y="359"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="9" font-weight="700" letter-spacing="1.6" fill="#6D28D9">LEARN</text>
+
+  <!-- CPS + IFS Tracking -->
+  <rect x="270" y="362" width="280" height="34" rx="7"
+        fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1.5"/>
+  <text x="410" y="384" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#4C1D95">CPS + IFS Tracking</text>
+
+  <line x1="410" y1="396" x2="410" y2="406" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Policy Learning Loop -->
+  <rect x="270" y="406" width="280" height="34" rx="7"
+        fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1.5"/>
+  <text x="410" y="428" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="13" font-weight="500" fill="#4C1D95">Policy Learning Loop</text>
+
+  <!-- ── Feedback loop: dashed curved arrow right side ── -->
+  <path d="M 550 423  C 710 430  710 68  550 93"
+        stroke="#93C5FD" stroke-width="1.5" stroke-dasharray="5,4"
+        fill="none" marker-end="url(#arr-fb)" opacity="0.75"/>
+
+  <!-- feedback label (rotated) -->
+  <text x="716" y="258" text-anchor="middle"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="10" fill="#93C5FD" opacity="0.9"
+        transform="rotate(90 716 258)">feedback loop</text>
+</svg>

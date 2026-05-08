@@ -1,12 +1,12 @@
 \begin{table}[t]
 \centering
-\caption{Runtime cost prevention results (Exp\,2). Static cost = cost of running unchanged; Prevented = cost saved by optimizer action(s); CPS = prevented\,/\,static. Scenario A CPS\,>\,1 because idle-period cost exceeds active-run cost.}
+\caption{Runtime cost prevention results (Exp\,2). Unchanged cost = cost of running the submitted configuration without intervention, including idle or overrun time; Prevented = cost saved by optimizer action(s); CPS = prevented\,/\,unchanged cost, which keeps runtime CPS bounded by 1.}
 \label{tab:runtime}
 \begin{tabular}{llrrrrl}
 \toprule
-Scenario & Config & Static (\$) & Prevented (\$) & CPS & Action(s) & Trigger (min) \\
+Scenario & Config & Unchanged (\$) & Prevented (\$) & CPS & Action(s) & Trigger (min) \\
 \midrule
-A - Idle adhoc & 6 nodes, spot, 3\,h idle & 0.69 & 1.61 & 2.337 & SCALE_DOWN, TERMINATE & 5, 180 \\
+A - Idle adhoc & 6 nodes, spot, 3\,h idle & 1.73 & 1.61 & 0.932 & SCALE_DOWN, TERMINATE & 5, 180 \\
 B - Underutil ETL & 20 nodes, CPU avg 18\,\% & 30.72 & 21.50 & 0.700 & SCALE_DOWN & 5 \\
 C - Runaway ML & 4 nodes p3.2xlarge, 3$\times$ duration & 146.88 & 97.92 & 0.667 & CHECKPOINT & 240 \\
 \bottomrule

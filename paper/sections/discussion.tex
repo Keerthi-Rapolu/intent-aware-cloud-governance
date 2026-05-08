@@ -1,0 +1,33 @@
+\section{Discussion}
+
+% Shared section
+
+The evaluation shows that earlier governance timing can improve prevention, but
+it does not establish that PBCP is immediately ready for production enforcement.
+The discussion therefore focuses on the boundary between what the benchmark
+supports today and what would still need validation in operational settings.
+
+\subsection{Limitations}
+
+Although the benchmark captures diverse workload behaviors, it remains a
+controlled synthetic environment rather than production telemetry. Real
+enterprise workloads may exhibit additional operational variance, organizational
+approval constraints, and intervention costs not represented here. The current
+results also depend on assumed policy and intervention parameters, the policy
+learning loop is still evaluated at limited scale, and the system has not yet
+been validated inside a live enterprise enforcement stack. Similarly, the
+Exp~3 mismatch-subgroup result is mixed even though overall detector quality
+improves, so the current anomaly-detection claim should be read as strong
+benchmark evidence rather than as final production generalization.
+
+\subsection{Future Work}
+
+The most direct next steps are calibration against real organizational telemetry,
+integration with execution platforms such as Databricks or Kubernetes, stronger
+online policy learning, and tighter coupling with production approval and
+enforcement stacks. These extensions would test whether the same
+workload-alignment signals remain useful once governance decisions interact with
+real operators, heterogeneous environments, and organization-specific risk
+tolerances.
+
+\input{sections/rca}

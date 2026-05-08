@@ -1,0 +1,27 @@
+\section{Introduction}
+
+A data engineering team provisions a 20-node Spark cluster for a nightly ETL workload expected to complete in two hours. The workload finishes in 37 minutes, but the cluster remains active overnight, accumulating hundreds of dollars in idle compute charges. Hours later, a cloud optimization advisor flags the cluster as underutilized. The waste has already occurred.
+
+This failure is not primarily a monitoring problem. It is a governance-timing problem. Existing cloud governance systems predominantly detect inefficiency after resources have already been provisioned, used, and billed. They optimize after execution, reason from telemetry after the fact, and react only after cost has already been incurred. Even accurate post-execution recommendations arrive too late to prevent the original waste.
+
+The core insight of this paper is that cloud waste is often caused by divergence between \emph{declared workload intent} and \emph{actual runtime behavior}. A workload submitted as a large, recurring ETL job may in practice behave like a short-lived, lightly utilized batch task. If intent can be inferred early, and if likely utilization and cost can be simulated before provisioning, governance can intervene before the waste is created.
+
+We present \emph{Pre-Billing Cost Prevention} (PBCP), an intent-aware cloud governance framework that moves the intervention point to the left of billing. PBCP infers workload intent from natural-language descriptions, retrieves similar historical workloads, predicts likely resource divergence through pre-execution simulation, and applies decision-theoretic interventions such as \texttt{BLOCK}, \texttt{AUTO\_CORRECT}, \texttt{SUGGEST}, or \texttt{PASS} before or during execution.
+
+PBCP is evaluated with three complementary metrics. \emph{Cost Prevention Score}
+(CPS) measures how much waste was prevented before billing, \emph{Execution
+Success Rate} (ESR) measures whether intervention preserved useful execution,
+and \emph{Intent-Fit Score} (IFS) measures workload alignment between declared
+intent and observed runtime behavior. Together, these metrics separate
+prevention value from system aggressiveness and make system-level evaluation
+more defensible.
+
+This paper makes four contributions:
+\begin{itemize}
+  \item A pre-billing governance architecture that reframes cloud cost control as an early-intervention systems problem rather than a post-billing reporting problem.
+  \item A decision-theoretic intervention engine that weighs predicted waste against the cost of governance actions before execution begins.
+  \item An Intent-Behavior Discrepancy (IBD) framework, operationalized through IFS, for modeling divergence between workload intent and runtime behavior.
+  \item A controlled evaluation benchmark spanning 500 workloads and 28{,}423 runs that measures pre-billing prevention, runtime governance, anomaly detection, and policy learning under one governance-timing framework.
+\end{itemize}
+
+We evaluate these contributions on a controlled benchmark of 500 workloads and 28{,}423 runs. The rest of the paper explains why existing systems fail under this timing model, presents the PBCP design as a Prevent~$\rightarrow$~Correct~$\rightarrow$~Learn pipeline, and evaluates whether early intent-aware intervention improves prevention quality over reactive baselines.

@@ -1,0 +1,16 @@
+Cloud governance systems usually detect waste only after resources have been
+provisioned, used, and billed. This timing makes many optimizations economically
+reactive even when post-execution diagnosis is accurate. We present
+\emph{Pre-Billing Cost Prevention} (PBCP), an intent-aware governance framework
+that infers workload intent from natural-language submissions, retrieves similar
+historical workloads, simulates likely utilization and cost before execution, and
+applies decision-theoretic intervention before waste is incurred. PBCP combines
+pre-billing prevention with runtime governance and policy learning, and it
+evaluates system behavior using Cost Prevention Score (CPS), Execution Success
+Rate (ESR), and Intent-Fit Score (IFS). Across a controlled benchmark of 500
+workloads and 28{,}423 runs, PBCP achieves utilization MAE of 0.054 in
+simulation calibration, improves IFS-based anomaly-detection F1 to 0.7608
+versus 0.6054 for a CPU-threshold baseline, and reaches peak CPS of 0.733, a
+56$\times$ improvement over the No Phase 3 baseline. These results suggest that
+cloud governance benefits from moving intervention earlier in the execution
+lifecycle rather than relying on post-billing recommendation alone.
