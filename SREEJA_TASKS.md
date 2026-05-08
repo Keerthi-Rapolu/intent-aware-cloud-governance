@@ -19,6 +19,33 @@ All of Keerthi's modules (Phases 0–6) are complete. Your work plugs into them 
 
 ---
 
+## Viewing the Paper (LaTeX Setup)
+
+To compile and read `paper/main.pdf` locally you need two things:
+
+**1. Install MiKTeX** (LaTeX distribution for Windows)
+- Download from: https://miktex.org/download
+- During first run, choose **Remote package repository (Internet)** when prompted
+- MiKTeX auto-installs missing packages on the fly
+
+**2. Install LaTeX Workshop in VS Code**
+- Extensions panel → search "LaTeX Workshop" → install
+- Open `paper/main.tex` → press `Ctrl+Alt+B` to build, then `Ctrl+Alt+V` to view PDF in the side panel
+
+**3. Compile from the terminal** (alternatively)
+```bash
+cd c:\Projects\IACG\paper
+make all          # runs pdflatex + bibtex + pdflatex + pdflatex
+```
+Or just:
+```bash
+latexmk -pdf paper/main.tex
+```
+
+> **Note:** `main.tex` already contains `\PassOptionsToPackage{expansion=false}{microtype}` at the top — this is required for MiKTeX on Windows and must stay in place.
+
+---
+
 ## What the System Does (1-minute version)
 
 PBCP prevents cloud over-provisioning **before billing** happens. When a team submits a workload:
