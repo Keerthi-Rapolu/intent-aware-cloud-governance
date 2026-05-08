@@ -23,12 +23,9 @@
 
 ## Live Demo
 
-<p align="center">
-  <img src="assets/runner.gif" width="720" alt=""><br>
-  <a href="https://intent-aware-cloud-governance.streamlit.app/">
-    <img src="assets/pbcp_demo_banner.png" width="720" alt="Launch PBCP Live Demo">
-  </a>
-</p>
+<p align="center"><img src="assets/runner.gif" width="720" alt=""></p>
+
+[![Launch PBCP Live Demo](assets/pbcp_demo_banner.png)](https://intent-aware-cloud-governance.streamlit.app/)
 
 The Streamlit demo includes:
 
