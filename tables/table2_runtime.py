@@ -1,10 +1,11 @@
 """
-Table 3 — Runtime Prevention (Exp 2)
+Table 3 - Runtime Prevention (Exp 2)
 
 One row per scenario. Columns:
-  Scenario | Instance | Nodes | Static cost | Prevented | CPS | Action(s) | Trigger (min)
+  Scenario | Instance | Nodes | Unchanged cost | Prevented | CPS | Action(s) | Trigger (min)
 
-Static costs computed via CloudCostModel (same as experiment).
+Unchanged costs are computed as the cost of running the submitted configuration
+without intervention, including idle or overrun time when applicable.
 
 Outputs:
     results/tables/table2_runtime.tex
@@ -22,27 +23,39 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-RESULTS_DIR = Path(__file__).parent.parent / "results"
-TABLES_DIR  = RESULTS_DIR / "tables"
+from experiments.exp2_runtime_prevention import SCENARIOS
+from simulation_engine.cost_model import CloudCostModel
 
-# Scenario static costs (from exp2 run — cost_model.compute_cost output)
-STATIC_COSTS = {
-    "A_idle_adhoc":    0.69,
-    "B_underutil_etl": 30.72,
-    "C_runaway_ml":    146.88,
-}
+RESULTS_DIR = Path(__file__).parent.parent / "results"
+TABLES_DIR = RESULTS_DIR / "tables"
 
 SCENARIO_LABELS = {
-    "A_idle_adhoc":    "A - Idle adhoc",
+    "A_idle_adhoc": "A - Idle adhoc",
     "B_underutil_etl": "B - Underutil ETL",
-    "C_runaway_ml":    "C - Runaway ML",
+    "C_runaway_ml": "C - Runaway ML",
 }
 
 SCENARIO_NOTES = {
-    "A_idle_adhoc":    "6 nodes, spot, 3\\,h idle",
+    "A_idle_adhoc": "6 nodes, spot, 3\\,h idle",
     "B_underutil_etl": "20 nodes, CPU avg 18\\,\\%",
-    "C_runaway_ml":    "4 nodes p3.2xlarge, 3$\\times$ duration",
+    "C_runaway_ml": "4 nodes p3.2xlarge, 3$\\times$ duration",
 }
+
+
+def unchanged_cost(skey: str) -> float:
+    run = SCENARIOS[skey][0]
+    hours = float(run["actual_duration_hours"]) + float(run.get("idle_time_hours", 0.0))
+    cost_model = CloudCostModel()
+    return round(
+        cost_model.compute_cost(
+            run["cloud_provider"],
+            run["instance_type"],
+            int(run["node_count"]),
+            hours,
+            use_spot=bool(run["use_spot"]),
+        ),
+        2,
+    )
 
 
 def make_table(df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
@@ -51,48 +64,48 @@ def make_table(df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
         grp = df[df["scenario"] == skey]
         actions_grp = grp[grp["action"] != "none"]
 
-        static     = STATIC_COSTS[skey]
-        prevented  = grp["total_prevented"].iloc[0] if len(grp) else 0.0
-        cps        = prevented / static if static > 0 else 0.0
-        actions    = ", ".join(actions_grp["action"].tolist()) if len(actions_grp) else "—"
-        triggers   = ", ".join(str(int(t)) for t in actions_grp["trigger_minute"].tolist()) \
-                     if len(actions_grp) else "—"
-        instance   = grp["instance_type"].iloc[0] if len(grp) else "—"
-        nodes      = int(grp["node_count"].iloc[0]) if len(grp) else 0
+        exposure = unchanged_cost(skey)
+        prevented = grp["total_prevented"].iloc[0] if len(grp) else 0.0
+        cps = prevented / exposure if exposure > 0 else 0.0
+        actions = ", ".join(actions_grp["action"].tolist()) if len(actions_grp) else "-"
+        triggers = ", ".join(str(int(t)) for t in actions_grp["trigger_minute"].tolist()) if len(actions_grp) else "-"
+        instance = grp["instance_type"].iloc[0] if len(grp) else "-"
+        nodes = int(grp["node_count"].iloc[0]) if len(grp) else 0
 
-        rows.append({
-            "Scenario":       label,
-            "Note":           SCENARIO_NOTES[skey],
-            "Instance":       instance,
-            "Nodes":          nodes,
-            "Static cost":    static,
-            "Prevented":      round(prevented, 2),
-            "CPS":            round(cps, 3),
-            "Action(s)":      actions,
-            "Trigger (min)":  triggers,
-        })
+        rows.append(
+            {
+                "Scenario": label,
+                "Note": SCENARIO_NOTES[skey],
+                "Instance": instance,
+                "Nodes": nodes,
+                "Unchanged cost": exposure,
+                "Prevented": round(prevented, 2),
+                "CPS": round(cps, 3),
+                "Action(s)": actions,
+                "Trigger (min)": triggers,
+            }
+        )
 
     tbl = pd.DataFrame(rows)
 
-    # --- LaTeX ------------------------------------------------------------------
     lines = [
         r"\begin{table}[t]",
         r"\centering",
         r"\caption{Runtime cost prevention results (Exp\,2). "
-        r"Static cost = cost of running unchanged; "
+        r"Unchanged cost = cost of running the submitted configuration without intervention, "
+        r"including idle or overrun time; "
         r"Prevented = cost saved by optimizer action(s); "
-        r"CPS = prevented\,/\,static. "
-        r"Scenario A CPS\,>\,1 because idle-period cost exceeds active-run cost.}",
+        r"CPS = prevented\,/\,unchanged cost, which keeps runtime CPS bounded by 1.}",
         r"\label{tab:runtime}",
         r"\begin{tabular}{llrrrrl}",
         r"\toprule",
-        r"Scenario & Config & Static (\$) & Prevented (\$) & CPS & Action(s) & Trigger (min) \\",
+        r"Scenario & Config & Unchanged (\$) & Prevented (\$) & CPS & Action(s) & Trigger (min) \\",
         r"\midrule",
     ]
     for _, row in tbl.iterrows():
         lines.append(
             f"{row['Scenario']} & {row['Note']} "
-            f"& {row['Static cost']:.2f} "
+            f"& {row['Unchanged cost']:.2f} "
             f"& {row['Prevented']:.2f} "
             f"& {row['CPS']:.3f} "
             f"& {row['Action(s)']} "

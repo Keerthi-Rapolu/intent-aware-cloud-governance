@@ -1,4 +1,4 @@
-Scenario,Note,Instance,Nodes,Static cost,Prevented,CPS,Action(s),Trigger (min)
-A - Idle adhoc,"6 nodes, spot, 3\,h idle",m5.xlarge,6,0.69,1.61,2.337,"SCALE_DOWN, TERMINATE","5, 180"
+Scenario,Note,Instance,Nodes,Unchanged cost,Prevented,CPS,Action(s),Trigger (min)
+A - Idle adhoc,"6 nodes, spot, 3\,h idle",m5.xlarge,6,1.73,1.61,0.932,"SCALE_DOWN, TERMINATE","5, 180"
 B - Underutil ETL,"20 nodes, CPU avg 18\,\%",m5.xlarge,20,30.72,21.5,0.7,SCALE_DOWN,5
 C - Runaway ML,"4 nodes p3.2xlarge, 3$\times$ duration",p3.2xlarge,4,146.88,97.92,0.667,CHECKPOINT,240
