@@ -58,9 +58,9 @@ requests are already near reasonable sizing. This behavior is desirable. A
 pre-billing governance system should intervene strongly on high-divergence
 requests without manufacturing unnecessary corrections on already aligned ones.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/exp1_preprovision.pdf}
+\includegraphics[width=\columnwidth]{figures/exp1_preprovision.pdf}
 \caption{Showcase pre-provision intervention for a 20-node ETL request. PBCP auto-corrects the request to 10 nodes before billing begins, preventing \$15.36 with CPS of 0.500.}
 \label{fig:exp1-preprovision}
 \end{figure}
@@ -78,9 +78,9 @@ governance is complementary to pre-billing intervention rather than redundant
 with it; accurate pre-execution simulation reduces avoidable waste, but several
 divergence patterns still emerge only after workload launch.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/exp2_runtime_timeline.pdf}
+\includegraphics[width=\columnwidth]{figures/exp2_runtime_timeline.pdf}
 \caption{Runtime governance intervention during a runaway ML training workload. The intervention checkpoints prolonged execution at the anomaly boundary, preventing \$97.92 of additional cost accumulation.}
 \label{fig:exp2-runtime}
 \end{figure}
@@ -106,9 +106,9 @@ uniformly favorable, so the result should be interpreted as evidence that
 intent-aware detection is stronger overall, not as proof that every workload
 subgroup behaves identically.
 
-\begin{figure}[t]
+\begin{figure}[tbp]
 \centering
-\includegraphics[width=0.8\linewidth]{figures/exp3_detector_comparison.pdf}
+\includegraphics[width=\columnwidth]{figures/exp3_detector_comparison.pdf}
 \caption{Detector comparison for Exp~3. The IFS-based detector improves overall detection quality relative to the CPU-threshold baseline on the committed benchmark outputs.}
 \label{fig:exp3-detector}
 \end{figure}
