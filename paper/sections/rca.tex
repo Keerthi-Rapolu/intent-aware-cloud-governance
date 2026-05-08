@@ -1,2 +1,34 @@
-% Owner: Sreeja
-% TODO(Sreeja): add RCA and feedback-loop support text for discussion/future work.
+% RCA and feedback-loop support text
+% Owner: Sreeja Katta
+
+\subsection{Anomaly Root Cause Analysis and the Prevention Feedback Loop}
+
+The RCA module closes the governance loop by converting recurring divergence
+patterns into policy suggestions. After each generation, \texttt{RootCauseAnalyzer}
+queries historical incidents and groups them by workload type and incident
+category: over-provisioned requests, idle cluster patterns, runaway jobs, and
+undeclared token budget. When the same pattern recurs at least three times within
+a lookback window, the module synthesizes a \texttt{Policy} object with confidence
+proportional to pattern frequency and submits it to \texttt{PolicyRegistry}.
+
+This mechanism matters for governance timing in a specific way. Pre-billing
+intervention handles known divergence patterns through preconfigured rules, but
+novel or low-frequency patterns are not covered by static policy. The feedback
+loop fills that gap: workloads that escape pre-billing intervention, behave
+anomalously at runtime, and are flagged by IFS eventually contribute to new
+learned policies that catch the same pattern in subsequent submissions. The policy
+learning convergence result from Exp~6 is partly attributable to this loop—Full
+PBCP substantially outperforms the No Phase~3 ablation because learned policies
+progressively reduce the baseline rate of uncaught divergence.
+
+The current feedback mechanism has two honest limitations. First, it operates on
+synthetic incident data. Incident classification in the benchmark is deterministic
+and the pattern counts are controlled, so the confidence and frequency estimates
+may not reflect the noisier, more ambiguous incident streams that appear in
+real enterprise environments. Second, the current implementation does not weight
+incidents by recency or cost severity within the pattern-counting logic. Two
+incidents with high cost impact and three incidents with low cost impact are
+treated identically, which could generate low-value learned policies while
+missing high-priority intervention opportunities. Both limitations are addressable
+through production integration and represent near-term extensions rather than
+design defects.

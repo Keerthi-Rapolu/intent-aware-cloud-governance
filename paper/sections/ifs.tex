@@ -1,3 +1,33 @@
-% Owner: Sreeja
-% TODO(Sreeja): add final Section 5.7 prose defining intent-behavior divergence
-% and IFS as the workload-alignment signal.
+% Section 5.7 — Intent-Behavior Discrepancy and IFS
+% Owner: Sreeja Katta
+
+IFS quantifies semantic alignment between two representations: a workload-intent
+embedding derived from the submitted description and resource configuration, and
+a behavior embedding derived from observed runtime telemetry. The canonical
+definition is their cosine similarity, which the pre-computed records in
+\texttt{cps\_ifs\_records} store directly. Operationally, IFS maps to four
+alignment categories: \emph{well-aligned} ($\mathrm{IFS} \geq 0.85$),
+\emph{minor divergence} ($0.70 \leq \mathrm{IFS} < 0.85$), \emph{significant
+divergence} ($0.50 \leq \mathrm{IFS} < 0.70$), and \emph{severe divergence}
+($\mathrm{IFS} < 0.50$). These thresholds are chosen so that the IBD flag
+($\mathrm{IFS} < 0.65$) falls between the minor and significant bands, giving
+the anomaly detector a conservative operating point without requiring a separate
+calibration step.
+
+The score is interpretable through four sub-scores—type alignment, utilization
+alignment, duration alignment, and resource alignment—weighted as 0.35, 0.25,
+0.20, and 0.20 respectively. These weights reflect the relative diagnostic value
+of each signal: workload type drives the largest structural decisions, while
+duration and resource sizing contribute refinement. For LLM pipeline workloads,
+a token-waste sub-score replaces part of the resource term, since token budget
+adherence carries governance significance that node count alone does not capture.
+The sub-scores are presented as interpretability support in the dashboard and
+not as separate metrics; the canonical IFS value is always the embedding cosine.
+
+The purpose of IFS within PBCP is diagnostic rather than preventive. CPS
+measures how much waste was stopped; IFS explains why waste occurred in the first
+place. A workload can receive a low CPS because no intervention was triggered and
+a low IFS because the job behaved nothing like it promised, or vice versa. That
+separation is what makes IFS useful: it surfaces intent-behavior mismatches that
+CPS and ESR do not capture directly, giving the policy learning loop a signal it
+can act on in subsequent generations.
