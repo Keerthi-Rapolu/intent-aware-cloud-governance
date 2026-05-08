@@ -32,15 +32,16 @@ threshold at which intervention becomes arbitrary. The remaining cost error is
 also expected: duration varies at runtime, so a pre-execution model cannot fully
 eliminate downstream uncertainty.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/exp0_calibration.pdf}
-\caption{Simulation calibration for Exp~0. Predicted utilization tracks observed utilization closely, with utilization MAE of 0.054; the committed benchmark artifact also reports cost calibration on the same sample.}
+\includegraphics[width=\textwidth]{figures/exp0_calibration.pdf}
+\caption{Simulation calibration for Exp~0. Predicted utilization closely tracks observed utilization, with utilization MAE of 0.054 and cost rel-RMSE of 0.306.}
 \label{fig:exp0-calibration}
-\end{figure}
+\end{figure*}
 
 \begin{table}[t]
 \centering
+\small
 \caption{Summary calibration results for Exp~0. The utilization error remains below the acceptance gate, and cost rel-RMSE stays within the tolerated pre-execution uncertainty range.}
 \label{tab:exp0-results}
 \input{tables/exp0_results}
@@ -88,6 +89,7 @@ divergence patterns still emerge only after workload launch.
 
 \begin{table}[t]
 \centering
+\small
 \caption{Runtime intervention scenarios from Exp~2. These cases illustrate how runtime governance complements pre-billing control when hidden failures emerge only after launch.}
 \label{tab:exp2-runtime}
 \input{tables/exp2_runtime_cases}
@@ -150,15 +152,16 @@ insufficient by itself. Governance quality improves most when workload
 alignment, intervention policy, and feedback are integrated into one loop rather
 than deployed as isolated components.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/exp6_convergence.pdf}
-\caption{Policy-learning convergence in Exp~6. Full PBCP reaches peak CPS of 0.733, compared with 0.013 for the No Phase 3 baseline, demonstrating a 56$\times$ improvement at peak.}
+\includegraphics[width=\textwidth]{figures/exp6_convergence.pdf}
+\caption{Policy-learning convergence in Exp~6. Full PBCP reaches peak CPS of 0.733 versus 0.013 for the No Phase 3 baseline, a 56$\times$ improvement.}
 \label{fig:exp6-convergence}
-\end{figure}
+\end{figure*}
 
 \begin{table}[t]
 \centering
+\small
 \caption{Available Exp~6 ablations from the committed benchmark outputs. Peak CPS is reported for each variant without relabeling unsupported baselines.}
 \label{tab:exp6-ablation}
 \input{tables/exp6_ablation}

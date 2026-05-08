@@ -281,31 +281,31 @@ def build_exp6_figure() -> None:
     peak_gen = int(df.loc[df["full_pbcp_cps_mean"].idxmax(), "generation"])
     ratio = round(full_peak / no3_peak) if no3_peak > 0 else np.nan
 
-    fig, ax = plt.subplots(figsize=(8.2, 4.8))
-    ax.plot(gens, full, color="#1f2937", linewidth=2.3, marker="o", label="Full PBCP")
-    ax.plot(gens, no_phase3, color="#94a3b8", linewidth=2.0, linestyle="--", marker="s", label="No Phase 3")
-    ax.axvline(3.5, color="#cbd5e1", linewidth=1.0, linestyle="--")
-    ax.axvline(7.5, color="#cbd5e1", linewidth=1.0, linestyle="--")
+    fig, ax = plt.subplots(figsize=(9.6, 5.3))
+    ax.plot(gens, full, color="#1f2937", linewidth=2.6, marker="o", markersize=6.5, label="Full PBCP")
+    ax.plot(gens, no_phase3, color="#94a3b8", linewidth=2.2, linestyle="--", marker="s", markersize=6.0, label="No Phase 3")
+    ax.axvline(3.5, color="#cbd5e1", linewidth=1.1, linestyle="--")
+    ax.axvline(7.5, color="#cbd5e1", linewidth=1.1, linestyle="--")
     ax.annotate(
         f"Peak CPS = {full_peak:.3f}\n{ratio:.0f}× vs No Phase 3",
         xy=(peak_gen, full_peak),
-        xytext=(peak_gen + 0.6, full_peak - 0.12),
+        xytext=(peak_gen + 0.75, full_peak - 0.13),
         arrowprops=dict(arrowstyle="->", lw=1.2, color="#111827"),
-        fontsize=9,
-        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#cbd5e1"),
+        fontsize=11,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#cbd5e1"),
     )
-    ax.set_xlabel("Policy learning iteration")
-    ax.set_ylabel("CPS")
+    ax.set_xlabel("Policy learning iteration", fontsize=12)
+    ax.set_ylabel("CPS", fontsize=12)
     ax.set_xticks(gens)
     ax.set_ylim(0, max(full_peak * 1.15, 0.8))
-    ax.set_title("Policy learning convergence under Full PBCP and No Phase 3", fontsize=11)
-    ax.grid(linewidth=0.4, alpha=0.35)
+    ax.tick_params(axis="both", labelsize=11)
+    ax.set_title("Policy learning convergence under Full PBCP and No Phase 3", fontsize=13)
+    ax.grid(linewidth=0.45, alpha=0.35)
     ax.set_axisbelow(True)
-    ax.legend(frameon=False, fontsize=9, loc="upper right")
+    ax.legend(frameon=False, fontsize=11, loc="upper right")
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "exp6_convergence.pdf", bbox_inches="tight")
     plt.close(fig)
-
 
 def build_related_work_table() -> None:
     tex = r"""
@@ -344,12 +344,14 @@ def build_exp2_table() -> None:
     for _, row in df.iterrows():
         workload = str(row["Scenario"]).replace(" - ", " ")
         action = str(row["Action(s)"]).replace("_", r"\_")
+        if action == r"SCALE\_DOWN, TERMINATE":
+            action = r"SCALE\_DOWN,\newline TERMINATE"
         rows.append(
             f"{workload} & {action} & ${float(row['Prevented']):.2f}$ & {float(row['CPS']):.3f} \\\\"
         )
     tex = "\n".join(
         [
-            r"\begin{tabular}{p{4.2cm}p{3.1cm}cc}",
+            r"\begin{tabular}{p{3.2cm}p{2.6cm}rr}",
             r"\toprule",
             r"Workload & Intervention & Prevented cost & CPS \\",
             r"\midrule",
