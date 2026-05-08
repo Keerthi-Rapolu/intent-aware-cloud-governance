@@ -14,7 +14,12 @@ alignment between intent and observed behavior.
 how much potential waste the system prevents before or during execution relative
 to the relevant cost exposure. CPS therefore quantifies the benefit of
 pre-billing intervention and runtime governance in operational rather than purely
-predictive terms.
+predictive terms. In this paper, the denominator is always the \emph{unchanged
+cost exposure}: for pre-provision experiments, the projected cost of executing
+the submitted request as-is; for runtime experiments, the cost that the same
+submitted configuration would have incurred without intervention, including any
+avoidable idle or overrun interval. With that stage-specific denominator, CPS
+remains bounded by 1.
 
 \subsection{Execution Success Rate}
 

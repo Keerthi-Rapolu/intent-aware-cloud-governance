@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 import matplotlib
@@ -90,10 +91,42 @@ def build_architecture_figure() -> None:
 
 def stage_exp0_figure() -> None:
     src = RESULTS_FIGURES / "exp0_calibration.pdf"
+    raster = RESULTS_FIGURES / "exp0_calibration_patched.png"
     dst = FIGURES_DIR / "exp0_calibration.pdf"
     if not src.exists():
         raise FileNotFoundError(f"Missing source figure: {src}")
-    shutil.copyfile(src, dst)
+
+    pdftocairo = shutil.which("pdftocairo")
+    if not pdftocairo:
+        raise FileNotFoundError("pdftocairo is required to patch exp0_calibration.pdf")
+
+    subprocess.run(
+        [pdftocairo, "-png", "-singlefile", "-r", "300", str(src), str(raster.with_suffix(""))],
+        check=True,
+    )
+
+    image = plt.imread(raster)
+    height, width = image.shape[:2]
+    fig, ax = plt.subplots(figsize=(width / 300, height / 300), dpi=300)
+    ax.imshow(image)
+    ax.set_xlim(0, width)
+    ax.set_ylim(height, 0)
+    ax.axis("off")
+
+    overlays = [
+        (900, 20, 1180, 95),
+        (1860, 150, 980, 90),
+        (1750, 245, 600, 85),
+    ]
+    for x, y, w, h in overlays:
+        ax.add_patch(Rectangle((x, y), w, h, facecolor="white", edgecolor="none", zorder=3))
+
+    ax.text(width / 2, 68, "Simulation Calibration (Exp 0)", ha="center", va="center", fontsize=24, color="black", zorder=4)
+    ax.text(2350, 195, "(b) Potential cost - rel-RMSE = 0.306", ha="center", va="center", fontsize=18, color="black", zorder=4)
+    ax.text(2050, 292, "rel-RMSE = 0.306", ha="center", va="center", fontsize=18, color="#333333", zorder=4)
+
+    fig.savefig(dst, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
 
 
 def _extract_showcase_metrics() -> dict[str, str]:
@@ -164,12 +197,12 @@ def build_exp2_figure() -> None:
     prevented = float(row["Prevented"])
     cps = float(row["CPS"])
     trigger_min = int(str(row["Trigger (min)"]).split(",")[0])
-    static_cost = float(row["Static cost"])
-    actual_cost = static_cost - prevented
+    unchanged_cost = float(row["Unchanged cost"])
+    actual_cost = unchanged_cost - prevented
 
     end_no_intervention = 720
     x = np.array([0, trigger_min, end_no_intervention])
-    y_baseline = np.array([0.0, actual_cost, static_cost])
+    y_baseline = np.array([0.0, actual_cost, unchanged_cost])
     y_intervened = np.array([0.0, actual_cost, actual_cost])
 
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.0, 5.4), sharex=True, gridspec_kw={"height_ratios": [1, 1.2]})
@@ -186,7 +219,7 @@ def build_exp2_figure() -> None:
 
     ax1.plot(x, y_baseline, color="#94a3b8", linewidth=2.0, label="No intervention")
     ax1.plot(x, y_intervened, color="#1f2937", linewidth=2.2, label="With runtime governance")
-    ax1.fill_between([trigger_min, end_no_intervention], [actual_cost, actual_cost], [static_cost, static_cost], color="#cbd5e1", alpha=0.45)
+    ax1.fill_between([trigger_min, end_no_intervention], [actual_cost, actual_cost], [unchanged_cost, unchanged_cost], color="#cbd5e1", alpha=0.45)
     ax1.annotate(
         f"Prevented = ${prevented:.2f}\nCPS = {cps:.3f}",
         xy=(trigger_min + 70, actual_cost + prevented * 0.45),
@@ -246,7 +279,7 @@ def build_exp6_figure() -> None:
     full_peak = float(full.max())
     no3_peak = float(no_phase3.max())
     peak_gen = int(df.loc[df["full_pbcp_cps_mean"].idxmax(), "generation"])
-    ratio = full_peak / no3_peak if no3_peak > 0 else np.nan
+    ratio = round(full_peak / no3_peak) if no3_peak > 0 else np.nan
 
     fig, ax = plt.subplots(figsize=(8.2, 4.8))
     ax.plot(gens, full, color="#1f2937", linewidth=2.3, marker="o", label="Full PBCP")
@@ -310,8 +343,9 @@ def build_exp2_table() -> None:
     rows = []
     for _, row in df.iterrows():
         workload = str(row["Scenario"]).replace(" - ", " ")
+        action = str(row["Action(s)"]).replace("_", r"\_")
         rows.append(
-            f"{workload} & {row['Action(s)']} & ${float(row['Prevented']):.2f} & {float(row['CPS']):.3f} \\\\"
+            f"{workload} & {action} & ${float(row['Prevented']):.2f}$ & {float(row['CPS']):.3f} \\\\"
         )
     tex = "\n".join(
         [

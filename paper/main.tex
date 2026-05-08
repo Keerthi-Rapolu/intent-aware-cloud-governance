@@ -5,6 +5,11 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 
+\setcopyright{none}
+\acmConference[]{}{}{}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+
 \begin{document}
 
 \title{PBCP: Pre-Billing Cost Prevention for Intent-Aware Cloud Governance}
@@ -15,6 +20,8 @@
 \begin{abstract}
 \input{sections/abstract}
 \end{abstract}
+
+\maketitle
 
 \input{sections/introduction}
 \input{sections/motivation}
