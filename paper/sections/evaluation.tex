@@ -1,0 +1,60 @@
+\section{Evaluation}
+
+% Lead owner: Keerthi
+% Exp 3 write-up: Sreeja
+% Exp 5 interpretation: shared
+
+Frame the evaluation around one rule: each experiment must answer one explicit
+question. The goal is not to enumerate every chart, but to show whether PBCP
+solves the governance-timing problem and whether its intent-aware signals add
+value beyond simpler baselines.
+
+\subsection{Experimental Setup}
+
+Summarize the controlled benchmark briefly: 500 workloads, 28,423 runs, six
+workload classes, historical run traces, and the intervention stages evaluated by
+the system. Keep this concise and reserve schema detail for an appendix or
+artifact note if needed.
+
+\subsection{Exp 0: Can Simulation Predict Utilization Accurately?}
+
+Report calibration quality and the corrected error metrics that justify using the
+simulator as a pre-execution signal. This subsection should anchor later claims
+by showing that predicted utilization and cost are close enough to support
+intervention decisions.
+
+\subsection{Exp 1: Can Pre-Provision Intervention Reduce Waste?}
+
+Use this subsection to compare full PBCP against the baseline methods and to
+highlight the 20-node ETL showcase scenario. Keep the question narrow: does
+pre-billing intervention prevent waste before resources are launched?
+
+\subsection{Exp 2: Can Runtime Governance Catch Hidden Failures?}
+
+Describe the scenarios where pre-execution reasoning is not sufficient and
+runtime correction still matters. Focus on what kinds of hidden failures were
+caught and how much cost was prevented after launch.
+
+\subsection{Exp 3: Does IFS Outperform CPU-Threshold Detection?}
+
+This subsection is primarily Sreeja's write-up. Compare IFS-based anomaly
+detection against the utilization-only baseline, report precision/recall/F1, and
+discuss the mismatch-subgroup near-fail honestly rather than hiding it. The
+current result should be framed precisely: the primary detection-quality gate
+passes clearly, while the subgroup comparison is mixed and should be interpreted
+as a limitation rather than ignored.
+
+\input{sections/anomaly_detection}
+
+\subsection{Exp 5: What Is Overall System Effectiveness?}
+
+Interpret the system roll-up using CPS, ESR, and IFS together. This subsection
+should explain how the full system performs across workload types while keeping
+the metric relationship clear: prevention, execution safety, and behavioral
+alignment.
+
+\subsection{Exp 6: Does Policy Learning Improve Over Time?}
+
+Use the convergence experiment to show whether the learning loop improves beyond
+frozen or partial-system baselines. The emphasis should be on longitudinal
+improvement, not on UI presentation of the curve.

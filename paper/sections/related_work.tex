@@ -1,0 +1,34 @@
+\section{Related Work}
+
+% Owner: Keerthi
+
+This section should compare categories of prior systems rather than walk through
+individual vendor products. The goal is to show that existing approaches still
+operate too late, reason from incomplete signals, or stop at advisory output.
+
+\subsection{Reactive Cloud Optimization}
+
+Describe systems that optimize cost or utilization after resources are already
+provisioned and billed. Emphasize the governance-timing gap: these systems may
+reduce future waste, but they do not prevent the initial waste event.
+
+\subsection{Utilization-Only Anomaly Detection}
+
+Summarize detectors based on CPU thresholds, idle time, or simple utilization
+rules. Contrast them with intent-aware reasoning: resource underutilization is a
+ symptom, but divergence between declared workload intent and runtime behavior is
+ the underlying systems problem.
+
+\subsection{Policy Governance Systems}
+
+Cover rule-based policy engines and compliance systems that enforce static
+constraints but do not model expected workload behavior or intervention tradeoffs.
+Highlight that static policies can block obvious misconfigurations without
+supporting cost-aware pre-execution reasoning.
+
+\subsection{AIOps and Runtime Control Systems}
+
+Position runtime optimization and AIOps platforms as useful for correction after
+launch, but limited as pre-billing governance mechanisms. Tie this gap directly
+to PBCP's design: intent inference, simulation, and intervention before waste is
+incurred.
