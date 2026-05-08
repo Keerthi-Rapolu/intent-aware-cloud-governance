@@ -22,7 +22,8 @@ Reactive cloud optimization systems identify underutilized clusters, idle
 instances, or inefficient purchasing choices after workloads have already run.
 These systems are valuable for retrospective cost reduction, but they do not
 prevent the initial waste event because their evidence arrives after billing has
-already begun or after execution has already consumed the relevant compute time.
+already begun or after execution has already consumed the relevant compute time
+\cite{aws-compute-optimizer,azure-advisor,gcp-recommender}.
 
 \subsection{Utilization-Only Anomaly Detection}
 
@@ -31,7 +32,7 @@ time, or abrupt runtime spikes. Such detectors can identify operational
 abnormalities, but they observe symptoms rather than expected workload behavior.
 For pre-billing governance, the central question is not only whether utilization
 is low, but whether the observed behavior is semantically aligned with the
-declared workload intent.
+declared workload intent \cite{chandola2009,zhong2023}.
 
 \subsection{Policy Governance Systems}
 
@@ -41,7 +42,7 @@ misconfigurations before launch, but they usually lack workload-specific priors
 and do not reason explicitly about expected savings versus intervention cost.
 As a result, they remain effective for compliance but limited for adaptive
 pre-billing governance, intervention-timing optimization, and gaming-resistant
-prevention evaluation.
+prevention evaluation \cite{opa-docs}.
 
 \subsection{AIOps and Runtime Control Systems}
 
@@ -51,4 +52,5 @@ governance stage, but they generally do not infer workload intent before launch
 or simulate likely waste before billing begins. PBCP differs by combining
 pre-billing intervention, runtime governance, and policy learning within one
 intent-aware control loop, and by evaluating prevention with CPS, ESR, and
-Valid CPS rather than with runtime remediation alone.
+Valid CPS rather than with runtime remediation alone
+\cite{notaro2020,autopilot2020,kubernetes-hpa}.

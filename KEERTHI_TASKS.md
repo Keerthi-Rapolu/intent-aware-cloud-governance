@@ -328,7 +328,7 @@ Each baseline exposes `evaluate(intent) → SimulationResult` and `evaluate_batc
   - 10 generations × 50 workloads, 4 scenarios (Full / Policy-only / Embedding-only / No Phase 3)
   - 5 seeds (42–46); mean ± std per generation
   - **Actual results (2026-05-05, 5 seeds 42–46):**
-    - Full PBCP peak CPS=0.733 (gen 5) vs. No Phase 3 peak=0.013 → **58× improvement**
+    - Full PBCP peak CPS=0.733 (gen 5) vs. No Phase 3 peak=0.013 → **56× improvement**
     - Gate (peak Full PBCP ≥ 1.5× No Phase 3 peak): **PASS**
     - Gens 0–3 (pre_provision stage): Full=0.29–0.40, Emb-only=0.10–0.11
     - Gens 4–7 (runtime stage): Full=0.60–0.73, baselines ≈ 0.00–0.01

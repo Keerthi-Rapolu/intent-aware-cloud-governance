@@ -207,7 +207,7 @@ with arch_col3:
   <div class="phase-step">
     <div class="phase-step-dot" style="background:#C3A6D4;"></div>
     <div><b style="color:#1A1A2E;">Convergence Improvement</b><br>
-    CPS improves across generations · Exp 6: peak 0.733, 58× vs no-Phase-3</div>
+    CPS improves across generations · Exp 6: peak 0.733, 56× vs no-Phase-3</div>
   </div>
 
   <div style="margin-top: 16px; padding: 10px 12px; background: rgba(195,166,212,0.15);
