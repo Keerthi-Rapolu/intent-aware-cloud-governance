@@ -38,3 +38,6 @@ Thumbs.db
 
 # Temp / scratch
 _schema.py
+
+# Local paper builds
+paper/main.pdf
