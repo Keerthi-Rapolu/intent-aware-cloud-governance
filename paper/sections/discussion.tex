@@ -1,0 +1,27 @@
+\section{Discussion}
+
+% Shared section
+
+Use this section to improve credibility, not to extend the contribution list.
+State limitations directly, explain what the current evaluation does and does not
+prove, and then outline the next systems steps required for a production-grade
+governance platform.
+
+\subsection{Limitations}
+
+Address the synthetic benchmark directly. Note that the current evaluation does
+not use real enterprise telemetry, that the policy-learning scale is still small,
+and that the system has not been validated as a production enforcement layer.
+Also discuss the Exp~3 mismatch-subgroup result directly: IFS improves overall
+detection quality over the CPU-threshold baseline, but one subgroup comparison is
+mixed and should be treated as a boundary on the current claim rather than
+hidden in a footnote.
+
+\subsection{Future Work}
+
+Keep the future-work discussion concrete: telemetry calibration against real
+organizations, integration with platforms such as Databricks or Kubernetes,
+stronger online learning, and tighter coupling with production enforcement and
+approval stacks.
+
+\input{sections/rca}

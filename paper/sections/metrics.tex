@@ -1,0 +1,31 @@
+\section{Metrics}
+
+% Lead owner: Keerthi
+% IFS framing input: Sreeja
+
+This section should stay short and operational. The paper does not need a large
+metric taxonomy; it only needs the metrics required to evaluate whether PBCP
+prevents waste and whether its reasoning aligns with observed behavior.
+
+\subsection{Cost Prevention Score}
+
+Introduce CPS as the primary prevention metric. This subsection should answer a
+single question: how much potential waste did the system prevent before or during
+execution?
+
+\subsection{Execution Success Rate}
+
+Introduce ESR as the anti-gaming constraint. The point is to show that high
+prevention is only meaningful when workloads still complete successfully and the
+system is not inflating CPS by over-blocking useful work.
+
+\subsection{Intent-Fit Score}
+
+Introduce IFS as the diagnostic metric. This subsection should make the
+relationship clear: CPS says how much waste was prevented, while IFS helps
+explain why a workload diverged from its expected behavior.
+
+At first mention in the final prose, keep the canonical terminology stable:
+Intent-Behavior Discrepancy (IBD) is the systems framing, and Intent-Fit Score
+(IFS) is the metric used to measure semantic alignment between intent and
+behavior.
