@@ -1,2 +1,32 @@
-% Owner: Sreeja
-% TODO(Sreeja): add RCA and feedback-loop support text for discussion/future work.
+% Authors: Keerthi Rapolu & Sreeja Katta
+
+\subsection{Anomaly Root Cause Analysis and Prevention Feedback}
+
+The RCA module converts recurring divergence patterns into policy suggestions,
+closing the governance loop between runtime monitoring and future pre-billing
+intervention. After each generation, \texttt{RootCauseAnalyzer} queries
+historical incidents grouped by workload type and incident category ---
+over-provisioned requests, idle cluster patterns, runaway execution, and
+undeclared token budget --- and synthesizes a \texttt{Policy} object when the
+same pattern recurs at least three times within a lookback window. Confidence
+scales with pattern frequency up to a ceiling of 0.95, and only policies above
+the 0.60 threshold enter the registry.
+
+This mechanism addresses a gap that static pre-billing policy cannot fill.
+Preconfigured rules handle known divergence patterns, but novel or low-frequency
+patterns are not covered at system initialization. The feedback loop fills that
+gap incrementally: workloads that escape pre-billing intervention, behave
+anomalously at runtime, and are flagged by IFS contribute to learned policies
+that catch the same pattern in subsequent submissions. The Exp~6 convergence
+result is partly attributable to this accumulation --- Full PBCP substantially
+outperforms the No Phase~3 ablation because learned policies progressively
+reduce the baseline rate of uncaught divergence.
+
+Two limitations apply to the current implementation. First, the feedback loop
+operates on synthetic incident data, so confidence and frequency estimates may
+not reflect the noisier incident streams in real enterprise environments. Second,
+the pattern-counting logic does not weight incidents by recency or cost severity,
+meaning a cluster of low-cost incidents and a smaller cluster of high-cost
+incidents are treated identically. Both limitations are addressable in a
+production deployment and represent near-term extensions rather than design
+defects.

@@ -36,6 +36,20 @@ The Streamlit demo includes:
 | Runtime & Savings | CPS, IFS, intervention timeline, workload type breakdown |
 | Learning System | Phase 3 convergence, policy synthesis, feedback loop |
 
+### First time here? Here's your five-minute tour 🗺️
+
+> Not sure where to click? Start here — you'll be an expert in five minutes.
+
+1. **[Overview](https://intent-aware-cloud-governance.streamlit.app/overview)** — Land here first. Two minutes of reading tells you what the whole system does and why it matters. Scan the KPI row at the top; those numbers are your anchor.
+
+2. **[Prevention Engine → Live Demo tab](https://intent-aware-cloud-governance.streamlit.app/prevention_engine)** — The fun part. Pick one of the three preset scenarios (or type your own job description) and hit **Run**. Watch PBCP decide whether to block it, fix it, suggest a change, or let it through — *before* billing. This is the "aha" moment.
+
+3. **[Prevention Engine → Anomaly Detection tab](https://intent-aware-cloud-governance.streamlit.app/prevention_engine)** — Still on the same page, just switch tabs. See how the IFS-based detector outperforms a plain CPU-threshold check for catching jobs that lied about what they'd do.
+
+4. **[Runtime & Savings](https://intent-aware-cloud-governance.streamlit.app/runtime_savings)** — The receipt. How much did the system actually save? Scroll through the CPS bars by stage and workload type. The IFS histogram shows how well jobs kept their promises.
+
+5. **[Learning System → Feedback Loop tab](https://intent-aware-cloud-governance.streamlit.app/learning_system)** — The punchline. PBCP doesn't just catch mistakes — after seeing the same failure three times, it writes its own prevention rule. The Convergence chart shows CPS climbing 8× higher *with* this learning loop versus without it.
+
 ---
 
 ## What PBCP Does
@@ -153,8 +167,9 @@ IACG/
 
 - **Keerthi Rapolu** — First Author; system architecture, intent inference, pre-execution simulation, EV intervention model, runtime optimizer, CPS/ESR evaluation, Streamlit research demo.
   Modules: `intent_model/` · `simulation_engine/` · `policy_engine/` · `runtime_optimizer/` · `cps_metrics/` · `app/`
-- **Sreeja Katta** — Second Author; Intent-Fit Score subsystem, anomaly RCA contributions, policy feedback loop support.
-  Modules: `ifs/` · `anomaly_rca/`
+
+- **Sreeja Katta** — Second Author; Intent-Fit Score (IFS) subsystem and formula design, IBD detection experiment (Exp 3) comparing IFS-based vs CPU-threshold anomaly detectors, anomaly root cause analyzer, prevention feedback loop (`AnomalyPreventionFeedback`) that auto-generates learned policies from recurring failure patterns, Streamlit dashboard pages for anomaly detection and the learning system.
+  Modules: `ifs/` · `anomaly_rca/` · `experiments/exp3_ibd_detection.py` · `visualization/exp3_ibd_chart.py` · `tables/table3_ibd.py`
 
 ## Citation
 

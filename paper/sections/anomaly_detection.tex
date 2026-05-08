@@ -1,3 +1,28 @@
-% Owner: Sreeja
-% TODO(Sreeja): add the final Exp 3 anomaly-detection interpretation using the
-% committed detector metrics and subgroup results.
+% Authors: Keerthi Rapolu & Sreeja Katta
+
+The F1 improvement from 0.605 to 0.761 is driven primarily by recall. The
+IFS-based detector captures anomalous workloads that the CPU-threshold baseline
+classifies as normal because their utilization does not breach the detection
+boundary. This pattern is consistent with the design intent of IFS: a workload
+that finishes early and idles, consumes fewer resources than requested, or
+executes a materially different computation than its description implies can
+remain below the utilization alert threshold while still producing measurable
+intent-behavior divergence.
+
+The mismatch-subgroup result adds an important qualification. Among workloads
+flagged as type-mismatched by intent inference, anomaly rates are higher and
+mean IFS is lower than in the non-mismatch group, consistent with the hypothesis
+that declared-to-inferred type divergence predicts runtime divergence. However,
+the anomaly rate difference across subgroups is not large enough for type
+mismatch alone to serve as a reliable detection signal. The subgroup result
+supports IFS as a composite detector rather than suggesting that any single
+structural feature is sufficient.
+
+The precision tradeoff is also worth stating directly. IFS precision on this
+benchmark is lower than the CPU-threshold baseline, meaning intent-aware
+detection produces more false positives per true positive. This is a consequence
+of IFS operating at broader sensitivity: it flags misaligned workloads earlier
+and more broadly than a utilization gate would. The threshold sweep shows that an
+operator can recover precision by raising $\theta_{\mathrm{ifs}}$ at the cost of
+recall, which provides a practical tuning handle once deployed against a
+production workload population.

@@ -14,9 +14,17 @@ from components.data_loader import (
     load_ibd_mismatch_subgroup,
 )
 from components.charts import confusion_matrix_heatmap
+from components.sidebar import render as render_sidebar
 
 st.set_page_config(page_title="Prevention Engine — PBCP", layout="wide")
+render_sidebar()
 st.title("Prevention Engine")
+st.markdown(
+    "This is where PBCP earns its keep — type in a workload description and watch it "
+    "decide whether to block, fix, suggest, or wave it through **before** a single dollar "
+    "is spent. Also includes the full workload catalogue and Sreeja's IBD anomaly detector "
+    "that catches jobs whose actual behaviour doesn't match what was promised."
+)
 
 tab_demo, tab_catalogue, tab_anomaly = st.tabs(
     ["Live Demo", "Workload Catalogue", "Anomaly Detection"]
