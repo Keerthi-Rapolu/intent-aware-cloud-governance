@@ -287,7 +287,7 @@ def build_exp6_figure() -> None:
     ax.axvline(3.5, color="#cbd5e1", linewidth=1.0, linestyle="--")
     ax.axvline(7.5, color="#cbd5e1", linewidth=1.0, linestyle="--")
     ax.annotate(
-        f"Peak CPS = {full_peak:.3f}\n{ratio:.0f}x vs No Phase 3",
+        f"Peak CPS = {full_peak:.3f}\n{ratio:.0f}× vs No Phase 3",
         xy=(peak_gen, full_peak),
         xytext=(peak_gen + 0.6, full_peak - 0.12),
         arrowprops=dict(arrowstyle="->", lw=1.2, color="#111827"),

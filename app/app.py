@@ -208,6 +208,6 @@ with col2:
 | Runtime (Exp 2) | $97.92 prevented (Scenario C) |
 | IBD Detection (Exp 3) | IFS F1 0.761 vs CPU-threshold 0.605 |
 | System Roll-up (Exp 5) | Valid CPS 0.559 · ESR 0.981 |
-| Convergence (Exp 6) | Peak CPS 0.733 · 58× vs no-Phase-3 |
+| Convergence (Exp 6) | Peak CPS 0.733 · 56× vs no-Phase-3 |
 """)
 
