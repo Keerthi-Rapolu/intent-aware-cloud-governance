@@ -3,29 +3,32 @@
 % Lead owner: Keerthi
 % IFS framing input: Sreeja
 
-This section should stay short and operational. The paper does not need a large
-metric taxonomy; it only needs the metrics required to evaluate whether PBCP
-prevents waste and whether its reasoning aligns with observed behavior.
+PBCP is evaluated with a small metric set chosen to reflect operational goals
+rather than metric diversity. CPS measures prevention value, ESR measures
+whether prevention preserves useful execution, and IFS measures workload
+alignment between intent and observed behavior.
 
 \subsection{Cost Prevention Score}
 
-Introduce CPS as the primary prevention metric. This subsection should answer a
-single question: how much potential waste did the system prevent before or during
-execution?
+\emph{Cost Prevention Score} (CPS) is the primary prevention metric. It measures
+how much potential waste the system prevents before or during execution relative
+to the relevant cost exposure. CPS therefore quantifies the benefit of
+pre-billing intervention and runtime governance in operational rather than purely
+predictive terms.
 
 \subsection{Execution Success Rate}
 
-Introduce ESR as the anti-gaming constraint. The point is to show that high
-prevention is only meaningful when workloads still complete successfully and the
-system is not inflating CPS by over-blocking useful work.
+\emph{Execution Success Rate} (ESR) is the anti-gaming constraint. A governance
+system can inflate prevention metrics by blocking useful work too aggressively,
+so CPS is only meaningful when interventions still preserve successful workload
+completion. ESR therefore distinguishes effective governance from trivial waste
+avoidance through over-restriction.
 
 \subsection{Intent-Fit Score}
 
-Introduce IFS as the diagnostic metric. This subsection should make the
-relationship clear: CPS says how much waste was prevented, while IFS helps
-explain why a workload diverged from its expected behavior.
-
-At first mention in the final prose, keep the canonical terminology stable:
-Intent-Behavior Discrepancy (IBD) is the systems framing, and Intent-Fit Score
-(IFS) is the metric used to measure semantic alignment between intent and
-behavior.
+\emph{Intent-Fit Score} (IFS) is the diagnostic metric for workload alignment.
+Within the intent-behavior divergence framing, IFS measures semantic alignment
+between workload intent and runtime behavior. The relationship among the metrics
+is deliberate: CPS indicates how much waste was prevented, ESR indicates whether
+prevention remained operationally safe, and IFS helps explain why a workload
+diverged from its expected behavior in the first place.

@@ -2,26 +2,32 @@
 
 % Shared section
 
-Use this section to improve credibility, not to extend the contribution list.
-State limitations directly, explain what the current evaluation does and does not
-prove, and then outline the next systems steps required for a production-grade
-governance platform.
+The evaluation shows that earlier governance timing can improve prevention, but
+it does not establish that PBCP is immediately ready for production enforcement.
+The discussion therefore focuses on the boundary between what the benchmark
+supports today and what would still need validation in operational settings.
 
 \subsection{Limitations}
 
-Address the synthetic benchmark directly. Note that the current evaluation does
-not use real enterprise telemetry, that the policy-learning scale is still small,
-and that the system has not been validated as a production enforcement layer.
-Also discuss the Exp~3 mismatch-subgroup result directly: IFS improves overall
-detection quality over the CPU-threshold baseline, but one subgroup comparison is
-mixed and should be treated as a boundary on the current claim rather than
-hidden in a footnote.
+Although the benchmark captures diverse workload behaviors, it remains a
+controlled synthetic environment rather than production telemetry. Real
+enterprise workloads may exhibit additional operational variance, organizational
+approval constraints, and intervention costs not represented here. The current
+results also depend on assumed policy and intervention parameters, the policy
+learning loop is still evaluated at limited scale, and the system has not yet
+been validated inside a live enterprise enforcement stack. Similarly, the
+Exp~3 mismatch-subgroup result is mixed even though overall detector quality
+improves, so the current anomaly-detection claim should be read as strong
+benchmark evidence rather than as final production generalization.
 
 \subsection{Future Work}
 
-Keep the future-work discussion concrete: telemetry calibration against real
-organizations, integration with platforms such as Databricks or Kubernetes,
-stronger online learning, and tighter coupling with production enforcement and
-approval stacks.
+The most direct next steps are calibration against real organizational telemetry,
+integration with execution platforms such as Databricks or Kubernetes, stronger
+online policy learning, and tighter coupling with production approval and
+enforcement stacks. These extensions would test whether the same
+workload-alignment signals remain useful once governance decisions interact with
+real operators, heterogeneous environments, and organization-specific risk
+tolerances.
 
 \input{sections/rca}
