@@ -20,7 +20,7 @@ resources are launched.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/architecture_overview.pdf}
+\includegraphics[width=\textwidth, trim=0 80pt 0 80pt, clip]{figures/architecture_overview.pdf}
 \caption{PBCP system architecture. The pipeline groups pre-billing prevention, runtime correction, and policy learning into one governance loop.}
 \label{fig:architecture}
 \end{figure*}
@@ -61,6 +61,7 @@ from expected behavior before provisioning occurs.
 
 \subsection{EV Decision Engine}
 
+\begin{sloppypar}
 The expected-value decision engine compares the outcomes of
 \texttt{BLOCK}, \texttt{AUTO\_CORRECT}, \texttt{SUGGEST}, and \texttt{PASS} by
 balancing predicted prevented cost against intervention cost, delay, and failure
@@ -68,6 +69,7 @@ risk. This decision-theoretic step matters because governance is not free:
 aggressive intervention can reduce waste while also increasing execution risk.
 PBCP therefore treats pre-billing intervention as a cost-sensitive control
 problem rather than as a fixed rule trigger.
+\end{sloppypar}
 
 \subsection{Runtime Governance}
 

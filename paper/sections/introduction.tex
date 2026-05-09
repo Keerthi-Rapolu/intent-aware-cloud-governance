@@ -6,7 +6,9 @@ This failure is not primarily a monitoring problem. It is a governance-timing pr
 
 The core insight of this paper is that cloud waste is often caused by divergence between \emph{declared workload intent} and \emph{actual runtime behavior}. A workload submitted as a large, recurring ETL job may in practice behave like a short-lived, lightly utilized batch task. If intent can be inferred early, and if likely utilization and cost can be simulated before provisioning, governance can intervene before the waste is created.
 
+\begin{sloppypar}
 We present \emph{Pre-Billing Cost Prevention} (PBCP), an intent-aware cloud governance framework that moves the intervention point to the left of billing. PBCP infers workload intent from natural-language descriptions, retrieves similar historical workloads, predicts likely resource divergence through pre-execution simulation, and applies decision-theoretic interventions such as \texttt{BLOCK}, \texttt{AUTO\_CORRECT}, \texttt{SUGGEST}, or \texttt{PASS} before or during execution.
+\end{sloppypar}
 
 PBCP is evaluated with three complementary metrics. \emph{Cost Prevention Score}
 (CPS) measures how much waste was prevented before billing, \emph{Execution
