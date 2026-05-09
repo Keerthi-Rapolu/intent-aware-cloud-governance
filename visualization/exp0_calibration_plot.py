@@ -62,8 +62,7 @@ def make_figure(df: pd.DataFrame) -> plt.Figure:
     ax.set_ylim(lo, hi)
     ax.set_xlabel("Actual utilization", fontsize=10)
     ax.set_ylabel("Predicted utilization", fontsize=10)
-    ax.set_title(f"(a) Utilization - MAE = {mae:.4f}", fontsize=10)
-    ax.annotate(f"MAE = {mae:.4f}", xy=(0.05, 0.92), xycoords="axes fraction", fontsize=9, color="#333333")
+    ax.set_title(f"(a) Utilization — MAE = {mae:.4f}", fontsize=10)
 
     ax = axes[1]
     for wtype, grp in df.groupby("workload_type"):
@@ -78,8 +77,7 @@ def make_figure(df: pd.DataFrame) -> plt.Figure:
     ax.set_ylim(cost_lo, cost_hi)
     ax.set_xlabel("Actual potential cost ($)", fontsize=10)
     ax.set_ylabel("Predicted potential cost ($)", fontsize=10)
-    ax.set_title(f"(b) Potential cost - rel-RMSE = {rel_rmse:.4f}", fontsize=10)
-    ax.annotate(f"rel-RMSE = {rel_rmse:.4f}", xy=(0.05, 0.92), xycoords="axes fraction", fontsize=9, color="#333333")
+    ax.set_title(f"(b) Potential cost — rel-RMSE = {rel_rmse:.4f}", fontsize=10)
 
     handles = [
         mlines.Line2D([], [], color=color, marker="o", linestyle="None", markersize=6, label=wtype)
@@ -88,7 +86,6 @@ def make_figure(df: pd.DataFrame) -> plt.Figure:
     handles.append(mlines.Line2D([], [], color="black", linestyle="--", linewidth=1.0, label="y = x"))
     fig.legend(handles=handles, loc="lower center", ncol=7, fontsize=8, bbox_to_anchor=(0.5, -0.06))
 
-    fig.suptitle("Simulation Calibration (Exp 0)", fontsize=11, y=1.01)
     fig.tight_layout()
     return fig
 
