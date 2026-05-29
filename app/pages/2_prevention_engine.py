@@ -22,7 +22,7 @@ st.title("Prevention Engine")
 st.markdown(
     "This is where PBCP earns its keep — type in a workload description and watch it "
     "decide whether to block, fix, suggest, or wave it through **before** a single dollar "
-    "is spent. Also includes the full workload catalogue and Sreeja's IBD anomaly detector "
+    "is spent. Also includes the full workload catalogue and the IBD anomaly detector "
     "that catches jobs whose actual behaviour doesn't match what was promised."
 )
 

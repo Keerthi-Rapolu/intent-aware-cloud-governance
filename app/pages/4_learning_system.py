@@ -25,7 +25,7 @@ st.title("Learning System")
 st.markdown(
     "PBCP doesn't just react — it gets smarter over time. "
     "The Convergence Study shows CPS climbing across generations as the system learns from past runs. "
-    "The Feedback Loop (Sreeja's module) watches for recurring anomalies and automatically "
+    "The Feedback Loop watches for recurring anomalies and automatically "
     "writes new prevention rules so the same mistake doesn't cost money twice."
 )
 st.caption(
