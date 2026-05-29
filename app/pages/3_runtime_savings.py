@@ -19,7 +19,7 @@ render_sidebar()
 st.title("Runtime & Savings")
 st.markdown(
     "How much did PBCP save, and did the workloads keep their promises? "
-    "CPS tracks the money; **IFS (Intent-Fit Score)**, Sreeja's metric, tracks whether each job's runtime matched its declared intent."
+    "CPS tracks the money; **IFS (Intent-Fit Score)** tracks whether each job's runtime matched its declared intent."
 )
 st.caption(
     "Cost prevention and alignment metrics across the controlled evaluation benchmark · "

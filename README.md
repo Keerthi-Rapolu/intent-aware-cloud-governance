@@ -176,7 +176,7 @@ IACG/
 ```bibtex
 @misc{rapolu2026pbcp,
   title  = {PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance},
-  author = {Rapolu, Keerthi and Katta, Sreeja},
+  author = {Katta, Sreeja and Rapolu, Keerthi},
   year   = {2026},
   note   = {IACG v2.0 Research Prototype. Manuscript under review.}
 }
