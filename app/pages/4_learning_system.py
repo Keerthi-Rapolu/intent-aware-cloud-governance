@@ -15,11 +15,19 @@ from components.data_loader import (
     load_ifs_distribution,
 )
 from components.charts import convergence_line
+from components.sidebar import render as render_sidebar
 
 _BG, _BG2, _GRID, _TEXT = "#FAFAF8", "#FFFFFF", "rgba(0,0,0,0.05)", "#6B7280"
 
 st.set_page_config(page_title="Learning System — PBCP", layout="wide")
+render_sidebar()
 st.title("Learning System")
+st.markdown(
+    "PBCP doesn't just react — it gets smarter over time. "
+    "The Convergence Study shows CPS climbing across generations as the system learns from past runs. "
+    "The Feedback Loop watches for recurring anomalies and automatically "
+    "writes new prevention rules so the same mistake doesn't cost money twice."
+)
 st.caption(
     "Phase 3 of PBCP — policy adaptation, divergence accumulation, "
     "and prospective guardrail synthesis from observed failure patterns."

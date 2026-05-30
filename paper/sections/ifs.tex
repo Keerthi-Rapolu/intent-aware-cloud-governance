@@ -1,3 +1,26 @@
-% Owner: Sreeja
-% TODO(Sreeja): add final Section 5.7 prose defining intent-behavior divergence
-% and IFS as the workload-alignment signal.
+% Authors: Sreeja Katta & Keerthi Rapolu
+
+IFS maps the embedding cosine to four alignment categories: \emph{well-aligned}
+($\mathrm{IFS} \geq 0.85$), \emph{minor divergence} ($0.70 \leq \mathrm{IFS}
+< 0.85$), \emph{significant divergence} ($0.50 \leq \mathrm{IFS} < 0.70$), and
+\emph{severe divergence} ($\mathrm{IFS} < 0.50$). These thresholds are chosen
+so that the IBD flag ($\mathrm{IFS} < 0.65$) falls between the minor and
+significant bands, giving anomaly detection a conservative operating point that
+does not require separate threshold calibration.
+
+The score decomposes into four interpretable sub-scores — type alignment,
+utilization alignment, duration alignment, and resource alignment — weighted
+0.35, 0.25, 0.20, and 0.20 respectively. For LLM pipeline workloads, a
+token-waste sub-score replaces part of the resource term because token budget
+adherence carries governance significance that node count alone does not capture.
+These sub-scores are presented in the dashboard as interpretability support
+rather than as standalone metrics; the canonical IFS value remains the embedding
+cosine.
+
+The role of IFS within PBCP is diagnostic rather than preventive. A workload can
+receive high CPS because an effective intervention was applied and high IFS
+because runtime behavior remained aligned, or low CPS because no intervention
+was triggered and low IFS because the job behaved contrary to its stated intent.
+That separation is what makes IFS useful: it explains why waste occurred rather
+than only measuring whether it was stopped, and it gives the policy learning loop
+a signal that CPS and ESR do not directly capture.

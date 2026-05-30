@@ -1,4 +1,4 @@
-"""Page 3 — Runtime & Savings: CPS / IFS metrics + intervention timeline."""
+"""Page 3 — Runtime & Savings: CPS / IFS metrics."""
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -7,14 +7,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import streamlit as st
 from components.data_loader import (
     load_kpis, load_cps_by_stage, load_cps_by_type,
-    load_ifs_distribution, load_intervention_examples,
+    load_ifs_distribution,
 )
 from components.charts import (
     cps_by_stage_bar, cps_by_type_bar, ifs_histogram, ifs_category_donut,
 )
+from components.sidebar import render as render_sidebar
 
 st.set_page_config(page_title="Runtime & Savings — PBCP", layout="wide")
+render_sidebar()
 st.title("Runtime & Savings")
+st.markdown(
+    "How much did PBCP save, and did the workloads keep their promises? "
+    "CPS tracks the money; **IFS (Intent-Fit Score)** tracks whether each job's runtime matched its declared intent."
+)
 st.caption(
     "Cost prevention and alignment metrics across the controlled evaluation benchmark · "
     "seed 42 · 500 workloads · 28,423 runs"
@@ -68,73 +74,6 @@ st.caption(
     "Benchmark includes controlled anomaly injection to evaluate governance "
     "effectiveness under realistic cloud waste scenarios."
 )
-
-st.divider()
-
-# -- Intervention Timeline -------------------------------------------------------
-st.subheader("Intervention Timeline")
-st.caption(
-    "Representative intervention records from the controlled benchmark. "
-    "Each card shows the full governance decision lifecycle for a workload."
-)
-
-INT_COLOR = {"AUTO_CORRECT": "#15803D", "BLOCK": "#DC2626",
-             "SUGGEST": "#B45309", "PASS": "#0891B2"}
-INT_CLASS  = {"AUTO_CORRECT": "ac", "BLOCK": "blk", "SUGGEST": "sug", "PASS": "pas"}
-
-examples = load_intervention_examples()
-
-# Two-column layout for timeline cards
-left_cards = examples[:3]
-right_cards = examples[3:]
-
-col_l, col_r = st.columns(2)
-
-for card_col, cards in [(col_l, left_cards), (col_r, right_cards)]:
-    with card_col:
-        for ex in cards:
-            iv = ex["intervention"]
-            css_class = INT_CLASS.get(iv, "pas")
-            color      = INT_COLOR.get(iv, "#94A3B8")
-
-            node_text = (
-                f"{ex['requested_nodes']} → {ex['optimal_nodes']} nodes"
-                if iv != "PASS" and iv != "BLOCK"
-                else (f"No change · {ex['requested_nodes']} nodes"
-                      if iv == "PASS" else f"{ex['requested_nodes']} nodes blocked")
-            )
-            savings_text = (
-                f"${ex['prevented_cost']:.0f} prevented"
-                if ex["prevented_cost"] > 0
-                else "No direct savings (well-aligned)"
-            )
-
-            st.markdown(f"""
-<div class="iv-card {css_class}">
-  <h4>
-    <span style="color:{color};">[{iv}]</span> &nbsp;
-    {ex["workload_name"]}
-  </h4>
-  <p><span class="highlight">{ex["workload_type"]}</span>
-     &nbsp;·&nbsp; {ex["team"]}
-     &nbsp;·&nbsp;
-     <span style="color:{color}; font-weight:700;">{iv}</span>
-  </p>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:8px;">
-    <p>Requested nodes: <span class="highlight">{ex["requested_nodes"]}</span></p>
-    <p>Optimal nodes: <span class="highlight">{ex["optimal_nodes"]}</span></p>
-    <p>Predicted utilization: <span class="highlight">{ex["predicted_util"]:.0%}</span></p>
-    <p>Expected duration: <span class="highlight">{ex["expected_hours"]:.0f} h</span></p>
-    <p>Potential cost: <span class="highlight">${ex["potential_cost"]:.0f}</span></p>
-    <p>Prevented: <span style="color:{color}; font-weight:700;">${ex["prevented_cost"]:.0f}</span></p>
-  </div>
-  <p style="margin-top:6px;">
-    CPS <span class="highlight">{ex["cps"]:.3f}</span>
-    &nbsp;·&nbsp;
-    IFS <span class="highlight">{ex["ifs"]:.3f}</span>
-  </p>
-</div>
-""", unsafe_allow_html=True)
 
 st.divider()
 

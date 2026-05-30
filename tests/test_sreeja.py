@@ -7,6 +7,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 DB_PATH = str(Path(__file__).parent.parent / "data" / "full" / "iacg.duckdb")
 
+_db_available = Path(DB_PATH).exists()
+skip_no_db = pytest.mark.skipif(not _db_available, reason="data/full/iacg.duckdb not found")
+
 # ── TestIFSCalculator ──────────────────────────────────────────────────────────
 
 class TestIFSCalculator:
@@ -561,3 +564,286 @@ class TestExp3IBDDetection:
         assert tm["non_mismatch_n"] == 5
         assert tm["mismatch_anomaly_rate"] > tm["non_mismatch_anomaly_rate"]
         assert tm["mismatch_mean_ifs"]     < tm["non_mismatch_mean_ifs"]
+
+
+# ── TestIFSWithDB ──────────────────────────────────────────────────────────────
+
+@skip_no_db
+class TestIFSWithDB:
+    """Integration tests: IFS calculator against real cps_ifs_records in DB."""
+
+    @pytest.fixture(scope="class")
+    def ifs_rows(self):
+        """Baseline rows represent the 500-workload population distribution."""
+        import duckdb
+        con = duckdb.connect(DB_PATH, read_only=True)
+        rows = con.execute(
+            "SELECT ifs, ifs_category FROM cps_ifs_records WHERE stage = 'baseline' LIMIT 1000"
+        ).fetchall()
+        con.close()
+        return rows
+
+    def test_db_has_ifs_records(self, ifs_rows):
+        assert len(ifs_rows) > 0, "cps_ifs_records has no baseline rows"
+
+    def test_mean_ifs_in_expected_range(self, ifs_rows):
+        mean = sum(r[0] for r in ifs_rows) / len(ifs_rows)
+        assert 0.60 <= mean <= 0.80, f"Mean IFS {mean:.3f} outside expected 0.60–0.80"
+
+    def test_all_ifs_values_bounded(self, ifs_rows):
+        for ifs, _ in ifs_rows:
+            assert 0.0 <= ifs <= 1.0, f"IFS value {ifs} out of [0,1]"
+
+    def test_all_four_categories_present(self):
+        """All four categories must exist across the full cps_ifs_records table."""
+        import duckdb
+        con = duckdb.connect(DB_PATH, read_only=True)
+        cats = {r[0] for r in con.execute(
+            "SELECT DISTINCT ifs_category FROM cps_ifs_records"
+        ).fetchall()}
+        con.close()
+        assert {"well_aligned", "minor", "significant", "severe"} <= cats
+
+    def test_well_aligned_fraction_reasonable(self, ifs_rows):
+        n_well = sum(1 for _, cat in ifs_rows if cat == "well_aligned")
+        frac = n_well / len(ifs_rows)
+        assert 0.10 <= frac <= 0.60, f"well_aligned fraction {frac:.2%} out of expected range"
+
+    def test_severe_fraction_reasonable(self, ifs_rows):
+        n_severe = sum(1 for _, cat in ifs_rows if cat == "severe")
+        frac = n_severe / len(ifs_rows)
+        assert 0.05 <= frac <= 0.50, f"severe fraction {frac:.2%} out of expected range"
+
+    def test_well_aligned_ifs_above_threshold(self, ifs_rows):
+        for ifs, cat in ifs_rows:
+            if cat == "well_aligned":
+                assert ifs >= 0.85, f"well_aligned but IFS={ifs}"
+
+
+# ── TestRCAWithDB ──────────────────────────────────────────────────────────────
+
+@skip_no_db
+class TestRCAWithDB:
+    """Integration tests: RootCauseAnalyzer against real historical_incidents."""
+
+    @pytest.fixture(scope="class")
+    def analyzer(self):
+        from anomaly_rca.root_cause_analyzer import RootCauseAnalyzer
+        return RootCauseAnalyzer(DB_PATH)
+
+    @pytest.fixture(scope="class")
+    def policies(self, analyzer):
+        return analyzer.analyze()
+
+    def test_incident_table_has_rows(self):
+        import duckdb
+        con = duckdb.connect(DB_PATH, read_only=True)
+        n = con.execute("SELECT COUNT(*) FROM historical_incidents").fetchone()[0]
+        con.close()
+        assert n >= 10, "historical_incidents has too few rows"
+
+    def test_analyze_returns_policies(self, policies):
+        assert len(policies) >= 2
+
+    def test_policies_all_learned(self, policies):
+        assert all(p.source == "learned" for p in policies)
+
+    def test_policies_confidence_range(self, policies):
+        for p in policies:
+            assert 0.60 <= p.confidence <= 0.95
+
+    def test_policies_have_valid_actions(self, policies):
+        valid = {"AUTO_CORRECT", "SUGGEST", "REJECT"}
+        for p in policies:
+            assert p.action in valid
+
+    def test_top_incidents_count(self, analyzer):
+        rows = analyzer.top_incidents(n=10)
+        assert len(rows) == 10
+
+    def test_top_incidents_descending_cost(self, analyzer):
+        rows = analyzer.top_incidents(n=20)
+        costs = [r["cost_impact_usd"] for r in rows]
+        assert costs == sorted(costs, reverse=True)
+
+    def test_known_incident_types_covered(self, analyzer):
+        rows = analyzer.top_incidents(n=50)
+        incident_types = {r["incident_type"] for r in rows}
+        assert "over_provisioned" in incident_types
+        assert "idle_cluster" in incident_types
+
+    def test_policy_ids_are_unique(self, policies):
+        ids = [p.policy_id for p in policies]
+        assert len(ids) == len(set(ids))
+
+    def test_policies_accepted_by_registry(self, policies):
+        from policy_engine.policy_registry import PolicyRegistry
+        registry = PolicyRegistry()
+        n_before = len(registry)
+        for p in policies:
+            registry.add(p)
+        assert len(registry) == n_before + len(policies)
+
+    def test_learned_policy_ids_not_in_builtin(self, policies):
+        from policy_engine.policy_registry import PolicyRegistry
+        builtin_ids = {p.policy_id for p in PolicyRegistry().list_all()}
+        for p in policies:
+            assert p.policy_id not in builtin_ids
+
+
+# ── TestPreventionFeedbackWithDB ───────────────────────────────────────────────
+
+@skip_no_db
+class TestPreventionFeedbackWithDB:
+    """Integration: AnomalyPreventionFeedback processing DB-derived IFS records."""
+
+    @pytest.fixture(scope="class")
+    def db_ifs_data(self):
+        """Load a sample of IBD-flagged rows from the DB."""
+        import duckdb
+        con = duckdb.connect(DB_PATH, read_only=True)
+        rows = con.execute("""
+            SELECT c.intent_id, c.run_id, c.ifs, c.ifs_category,
+                   w.workload_type, c.potential_cost_usd
+            FROM cps_ifs_records c
+            JOIN workload_intent w USING (intent_id)
+            WHERE c.ifs < 0.65 AND c.stage != 'baseline'
+            LIMIT 50
+        """).fetchall()
+        con.close()
+        return rows
+
+    def test_db_has_ibd_records(self, db_ifs_data):
+        assert len(db_ifs_data) > 0, "No IBD records found in DB"
+
+    def test_feedback_processes_db_records(self, db_ifs_data):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        from policy_engine.policy_registry import PolicyRegistry
+
+        class _FakeRec:
+            def __init__(self, row):
+                self.intent_id = row[0]
+                self.run_id = row[1]
+                self.ifs = row[2]
+                self.ifs_category = row[3]
+                self.type_alignment = 0.40
+                self.util_alignment = 0.40
+                self.duration_alignment = 0.40
+                self.resource_alignment = 0.40
+
+        records = [_FakeRec(r) for r in db_ifs_data]
+        wtype_map = {r[0]: r[4] for r in db_ifs_data}
+        cost_map  = {r[0]: r[5] for r in db_ifs_data}
+
+        registry = PolicyRegistry()
+        feedback = AnomalyPreventionFeedback(registry)
+        anomalies = feedback.process(records, wtype_map, cost_map)
+
+        assert len(anomalies) == len(records)
+        assert all(a.is_ibd_flagged for a in anomalies)
+
+    def test_all_anomalies_have_workload_type(self, db_ifs_data):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        from policy_engine.policy_registry import PolicyRegistry
+
+        class _FakeRec:
+            def __init__(self, row):
+                self.intent_id = row[0]; self.run_id = row[1]; self.ifs = row[2]
+                self.ifs_category = row[3]; self.type_alignment = 0.4
+                self.util_alignment = 0.4; self.duration_alignment = 0.4
+                self.resource_alignment = 0.4
+
+        records  = [_FakeRec(r) for r in db_ifs_data]
+        wtype_map = {r[0]: r[4] for r in db_ifs_data}
+        feedback  = AnomalyPreventionFeedback(PolicyRegistry())
+        anomalies = feedback.process(records, wtype_map)
+
+        for a in anomalies:
+            assert a.workload_type, "workload_type must not be empty"
+
+    def test_summary_ibd_count_matches(self, db_ifs_data):
+        from anomaly_rca.prevention_feedback import AnomalyPreventionFeedback
+        from policy_engine.policy_registry import PolicyRegistry
+
+        class _FakeRec:
+            def __init__(self, row):
+                self.intent_id = row[0]; self.run_id = row[1]; self.ifs = row[2]
+                self.ifs_category = row[3]; self.type_alignment = 0.4
+                self.util_alignment = 0.4; self.duration_alignment = 0.4
+                self.resource_alignment = 0.4
+
+        records  = [_FakeRec(r) for r in db_ifs_data]
+        feedback = AnomalyPreventionFeedback(PolicyRegistry())
+        anomalies = feedback.process(records, {r[0]: r[4] for r in db_ifs_data})
+        s = feedback.summary(anomalies)
+
+        assert s["n_ibd"] == len(records)
+        assert 0.0 <= s["mean_ifs"] < 0.65
+
+
+# ── TestExp3WithDB ─────────────────────────────────────────────────────────────
+
+@skip_no_db
+class TestExp3WithDB:
+    """Integration: Exp 3 IBD detector evaluation against real DB data."""
+
+    @pytest.fixture(scope="class")
+    def db_runs(self):
+        import duckdb
+        con = duckdb.connect(DB_PATH, read_only=True)
+        rows = con.execute("""
+            SELECT r.run_id, r.intent_id, r.cpu_utilization_avg,
+                   r.idle_time_hours, r.actual_duration_hours, r.expected_duration_hours,
+                   r.is_anomaly, r.is_runaway, r.is_idle_injected,
+                   c.ifs, c.ifs_category, w.type_mismatch, w.type_mismatch_confidence
+            FROM runtime_metrics r
+            JOIN cps_ifs_records c ON r.run_id = c.run_id
+            JOIN workload_intent w ON r.intent_id = w.intent_id
+            WHERE c.stage != 'baseline'
+            LIMIT 300
+        """).fetchall()
+        con.close()
+        cols = ["run_id","intent_id","cpu_util","idle_time_hours","actual_duration_hours",
+                "expected_duration_hours","is_anomaly","is_runaway","is_idle_injected",
+                "ifs","ifs_category","type_mismatch","type_mismatch_confidence"]
+        return [dict(zip(cols, r)) for r in rows]
+
+    def test_db_returns_runs(self, db_runs):
+        assert len(db_runs) > 0
+
+    def test_ifs_detector_f1_exceeds_threshold_f1(self, db_runs):
+        from experiments.exp3_ibd_detection import _compute_metrics, _threshold_detector, _ifs_detector
+        thresh_m = _compute_metrics(db_runs, _threshold_detector)
+        ifs_m    = _compute_metrics(db_runs, _ifs_detector)
+        assert ifs_m["f1"] >= thresh_m["f1"], (
+            f"IFS F1 {ifs_m['f1']:.3f} should exceed threshold F1 {thresh_m['f1']:.3f}"
+        )
+
+    def test_ifs_detector_recall_exceeds_threshold(self, db_runs):
+        from experiments.exp3_ibd_detection import _compute_metrics, _threshold_detector, _ifs_detector
+        thresh_m = _compute_metrics(db_runs, _threshold_detector)
+        ifs_m    = _compute_metrics(db_runs, _ifs_detector)
+        assert ifs_m["recall"] >= thresh_m["recall"], (
+            f"IFS recall {ifs_m['recall']:.3f} should be >= threshold recall {thresh_m['recall']:.3f}"
+        )
+
+    def test_metrics_keys_complete(self, db_runs):
+        from experiments.exp3_ibd_detection import _compute_metrics, _ifs_detector
+        m = _compute_metrics(db_runs, _ifs_detector)
+        for key in ("precision", "recall", "f1", "fpr", "tp", "fp", "tn", "fn"):
+            assert key in m
+
+    def test_no_anomaly_in_db_means_no_tp(self, db_runs):
+        from experiments.exp3_ibd_detection import _compute_metrics
+        # always-false detector → TP must be 0
+        m = _compute_metrics(db_runs, lambda r: False)
+        assert m["tp"] == 0
+        assert m["fp"] == 0
+
+    def test_type_mismatch_subgroup_has_higher_anomaly_rate(self, db_runs):
+        from experiments.exp3_ibd_detection import _type_mismatch_analysis
+        mismatch_rows = [r for r in db_runs if r.get("type_mismatch")]
+        if len(mismatch_rows) < 2:
+            pytest.skip("not enough type_mismatch rows in DB sample")
+        tm = _type_mismatch_analysis(db_runs)
+        assert tm["mismatch_anomaly_rate"] >= tm["non_mismatch_anomaly_rate"]
