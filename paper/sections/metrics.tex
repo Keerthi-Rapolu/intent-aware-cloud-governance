@@ -1,0 +1,43 @@
+\section{Metrics}
+
+% Lead owner: Keerthi
+% IFS framing input: Sreeja
+
+PBCP is evaluated with a small metric set chosen to reflect operational goals
+rather than metric diversity. CPS measures prevention value, ESR measures
+whether prevention preserves useful execution, and IFS measures workload
+alignment between intent and observed behavior.
+
+\subsection{Cost Prevention Score}
+
+\emph{Cost Prevention Score} (CPS) is the primary prevention metric. It measures
+how much potential waste the system prevents before or during execution relative
+to the relevant cost exposure. CPS therefore quantifies the benefit of
+pre-billing intervention and runtime governance in operational rather than purely
+predictive terms. In this paper, the denominator is always the \emph{unchanged
+cost exposure}: for pre-provision experiments, the projected cost of executing
+the submitted request as-is; for runtime experiments, the cost that the same
+submitted configuration would have incurred without intervention, including any
+avoidable idle or overrun interval. With that stage-specific denominator, CPS
+remains bounded by 1.
+
+\subsection{Execution Success Rate}
+
+\emph{Execution Success Rate} (ESR) is the anti-gaming constraint. A governance
+system can inflate prevention metrics by blocking useful work too aggressively,
+so CPS is only meaningful when interventions still preserve successful workload
+completion. ESR therefore distinguishes effective governance from trivial waste
+avoidance through over-restriction. We therefore report \emph{Valid CPS} as
+$\mathrm{CPS} \times \mathrm{ESR}$ so that high prevention is only credited when
+execution remains operationally successful.
+
+\subsection{Intent-Fit Score}
+
+\emph{Intent-Fit Score} (IFS) is the diagnostic metric for workload alignment.
+Within the intent-behavior divergence framing, the canonical IFS definition is
+the cosine similarity between intent embeddings and behavior embeddings. In this
+paper, any sub-score decomposition is interpretability support only, not the
+primary metric definition. The relationship among the metrics is deliberate: CPS
+indicates how much waste was prevented, ESR indicates whether prevention
+remained operationally safe, and IFS helps explain why a workload diverged from
+its expected behavior in the first place.

@@ -1,0 +1,63 @@
+\section{Related Work}
+
+% Owner: Keerthi
+
+Prior work on cloud cost control, anomaly detection, and automated operations
+addresses adjacent parts of the waste problem, but usually leaves the governance
+decision point after provisioning or after execution. Table~\ref{tab:related-work}
+summarizes this distinction at the system-category level and frames PBCP as a
+governance-timing contribution rather than another reporting tool.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Comparison of system categories by intervention timing and governance capability. PBCP is positioned around pre-billing intervention rather than post-billing recommendation.}
+\label{tab:related-work}
+\input{tables/related_work}
+\end{table*}
+
+\subsection{Reactive Cloud Optimization}
+
+Reactive cloud optimization systems identify underutilized clusters, idle
+instances, or inefficient purchasing choices after workloads have already run.
+These systems are valuable for retrospective cost reduction, but they do not
+prevent the initial waste event because their evidence arrives after billing has
+already begun or after execution has already consumed the relevant compute time
+\cite{aws-compute-optimizer,azure-advisor,gcp-recommender}.
+
+Unlike AWS Compute Optimizer, Azure Advisor, and GCP Recommender, which
+generate recommendations only after resources have already been provisioned and
+billing has begun, PBCP performs intent-aware simulation and intervention before
+execution. The primary distinction is therefore governance timing rather than
+recommendation quality alone. PBCP treats cloud cost control as a pre-billing
+prevention problem rather than a post-billing optimization problem.
+
+\subsection{Utilization-Only Anomaly Detection}
+
+Utilization-based anomaly detectors rely on signals such as CPU thresholds, idle
+time, or abrupt runtime spikes. Such detectors can identify operational
+abnormalities, but they observe symptoms rather than expected workload behavior.
+For pre-billing governance, the central question is not only whether utilization
+is low, but whether the observed behavior is semantically aligned with the
+declared workload intent \cite{chandola2009,zhong2023}.
+
+\subsection{Policy Governance Systems}
+
+Policy governance systems enforce static constraints such as quota limits,
+approved instance families, or shutdown requirements. They can block obvious
+misconfigurations before launch, but they usually lack workload-specific priors
+and do not reason explicitly about expected savings versus intervention cost.
+As a result, they remain effective for compliance but limited for adaptive
+pre-billing governance, intervention-timing optimization, and gaming-resistant
+prevention evaluation \cite{opa-docs}.
+
+\subsection{AIOps and Runtime Control Systems}
+
+AIOps and autonomous remediation systems provide runtime correction once
+divergence is visible in telemetry. They are closely related to PBCP's runtime
+governance stage, but they generally do not infer workload intent before launch
+or simulate likely waste before billing begins. PBCP differs by combining
+pre-billing intervention, runtime governance, and policy learning within one
+intent-aware control loop, and by evaluating prevention with CPS, ESR, and
+Valid CPS rather than with runtime remediation alone
+\cite{notaro2020,autopilot2020,kubernetes-hpa}.

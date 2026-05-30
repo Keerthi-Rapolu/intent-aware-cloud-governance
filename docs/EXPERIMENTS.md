@@ -9,7 +9,7 @@ This repository is positioned as a controlled research prototype and benchmark. 
 | Runtime | $97.92 prevented in runaway ML scenario |
 | IBD Detection | IFS F1 0.761 vs CPU baseline 0.605 |
 | System Roll-up | Valid CPS 0.559 · ESR 0.981 |
-| Convergence | Peak CPS 0.733 · 58× vs no-Phase-3 |
+| Convergence | Peak CPS 0.733 · 56× vs no-Phase-3 |
 
 ## Reproduction
 

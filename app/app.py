@@ -146,7 +146,7 @@ html, body, [class*="css"] {
 st.sidebar.markdown("""
 <div style="padding: 4px 0 12px 0;">
   <div style="font-size: 16px; font-weight: 600; color: #1A1A2E;">PBCP Research Demo</div>
-  <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">IACG v2.0 · Keerthi Rapolu</div>
+  <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">IACG v2.0 · Keerthi Rapolu &amp; Sreeja Katta</div>
 </div>
 """, unsafe_allow_html=True)
 st.sidebar.divider()
@@ -208,6 +208,6 @@ with col2:
 | Runtime (Exp 2) | $97.92 prevented (Scenario C) |
 | IBD Detection (Exp 3) | IFS F1 0.761 vs CPU-threshold 0.605 |
 | System Roll-up (Exp 5) | Valid CPS 0.559 · ESR 0.981 |
-| Convergence (Exp 6) | Peak CPS 0.733 · 58× vs no-Phase-3 |
+| Convergence (Exp 6) | Peak CPS 0.733 · 56× vs no-Phase-3 |
 """)
 
