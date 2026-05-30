@@ -41,3 +41,11 @@ _schema.py
 
 # Local paper builds
 paper/main.pdf
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.log
+paper/main.out
+
+# Intermediate figure artifacts from build_paper_artifacts.py
+results/figures/*_patched.png
