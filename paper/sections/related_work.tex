@@ -8,13 +8,13 @@ decision point after provisioning or after execution. Table~\ref{tab:related-wor
 summarizes this distinction at the system-category level and frames PBCP as a
 governance-timing contribution rather than another reporting tool.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \small
 \caption{Comparison of system categories by intervention timing and governance capability. PBCP is positioned around pre-billing intervention rather than post-billing recommendation.}
 \label{tab:related-work}
 \input{tables/related_work}
-\end{table}
+\end{table*}
 
 \subsection{Reactive Cloud Optimization}
 
@@ -24,6 +24,13 @@ These systems are valuable for retrospective cost reduction, but they do not
 prevent the initial waste event because their evidence arrives after billing has
 already begun or after execution has already consumed the relevant compute time
 \cite{aws-compute-optimizer,azure-advisor,gcp-recommender}.
+
+Unlike AWS Compute Optimizer, Azure Advisor, and GCP Recommender, which
+generate recommendations only after resources have already been provisioned and
+billing has begun, PBCP performs intent-aware simulation and intervention before
+execution. The primary distinction is therefore governance timing rather than
+recommendation quality alone. PBCP treats cloud cost control as a pre-billing
+prevention problem rather than a post-billing optimization problem.
 
 \subsection{Utilization-Only Anomaly Detection}
 

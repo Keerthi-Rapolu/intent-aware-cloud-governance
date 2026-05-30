@@ -32,17 +32,19 @@ def write_text(path: Path, text: str) -> None:
 
 
 def build_architecture_figure() -> None:
-    fig, ax = plt.subplots(figsize=(12, 3.8))
+    fig, ax = plt.subplots(figsize=(12, 2.45))
     ax.axis("off")
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.44, 0.78)
 
     groups = [
-        ("Prevent", 0.05, 0.57, 0.52, 0.28, "#d9dee5"),
-        ("Correct", 0.59, 0.57, 0.16, 0.28, "#e4e8ec"),
-        ("Learn", 0.77, 0.57, 0.18, 0.28, "#dde4e9"),
+        ("Prevent", 0.03, 0.46, 0.56, 0.24, "#d9dee5"),
+        ("Correct", 0.61, 0.46, 0.15, 0.24, "#e4e8ec"),
+        ("Learn", 0.78, 0.46, 0.18, 0.24, "#dde4e9"),
     ]
     for label, x, y, w, h, color in groups:
         ax.add_patch(Rectangle((x, y), w, h, facecolor=color, edgecolor="#7a8793", linewidth=1.0))
-        ax.text(x + 0.01, y + h + 0.015, label, fontsize=11, fontweight="bold", color="#334155")
+        ax.text(x + 0.01, y + h + 0.012, label, fontsize=12, fontweight="bold", color="#334155")
 
     labels = [
         "Natural Language\nWorkload",
@@ -54,10 +56,10 @@ def build_architecture_figure() -> None:
         "CPS / ESR\nTracking",
         "Policy Learning\nLoop",
     ]
-    x_positions = np.linspace(0.08, 0.92, len(labels))
-    y = 0.68
-    box_w = 0.1
-    box_h = 0.1
+    x_positions = np.linspace(0.06, 0.94, len(labels))
+    y = 0.58
+    box_w = 0.105
+    box_h = 0.11
 
     for i, (x, label) in enumerate(zip(x_positions, labels)):
         ax.add_patch(
@@ -70,7 +72,7 @@ def build_architecture_figure() -> None:
                 linewidth=1.1,
             )
         )
-        ax.text(x, y, label, ha="center", va="center", fontsize=9, color="#111827")
+        ax.text(x, y, label, ha="center", va="center", fontsize=9.5, color="#111827")
         if i < len(labels) - 1:
             ax.add_patch(
                 FancyArrowPatch(
@@ -83,7 +85,6 @@ def build_architecture_figure() -> None:
                 )
             )
 
-    ax.text(0.50, 0.38, "Prevent -> Correct -> Learn pipeline", ha="center", fontsize=10, color="#475569")
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "architecture_overview.pdf", bbox_inches="tight")
     plt.close(fig)
@@ -107,25 +108,46 @@ def stage_exp0_figure() -> None:
 
     image = plt.imread(raster)
     height, width = image.shape[:2]
-    fig, ax = plt.subplots(figsize=(width / 300, height / 300), dpi=300)
-    ax.imshow(image)
-    ax.set_xlim(0, width)
-    ax.set_ylim(height, 0)
-    ax.axis("off")
 
-    overlays = [
-        (900, 20, 1180, 95),
-        (1860, 150, 980, 90),
-        (1750, 245, 600, 85),
+    # Compose a clean two-panel figure from the plotted regions only so the typography
+    # matches the rest of the manuscript instead of inheriting oversized source titles.
+    y0 = int(height * 0.18)
+    y1 = int(height * 0.90)
+    left = image[y0:y1, int(width * 0.03):int(width * 0.48)]
+    right = image[y0:y1, int(width * 0.53):int(width * 0.98)]
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.7), dpi=300, gridspec_kw={"wspace": 0.05})
+    titles = [
+        "(a) Utilization calibration  MAE = 0.054",
+        "(b) Potential cost calibration  rel-RMSE = 0.306",
     ]
-    for x, y, w, h in overlays:
-        ax.add_patch(Rectangle((x, y), w, h, facecolor="white", edgecolor="none", zorder=3))
+    for ax, panel, title in zip(axes, [left, right], titles):
+        ax.imshow(panel)
+        ax.add_patch(
+            Rectangle(
+                (0, 0),
+                panel.shape[1],
+                panel.shape[0] * 0.10,
+                facecolor="white",
+                edgecolor="none",
+                zorder=3,
+            )
+        )
+        ax.add_patch(
+            Rectangle(
+                (panel.shape[1] * 0.03, panel.shape[0] * 0.03),
+                panel.shape[1] * 0.30,
+                panel.shape[0] * 0.08,
+                facecolor="white",
+                edgecolor="none",
+                zorder=3,
+            )
+        )
+        ax.axis("off")
+        ax.set_title(title, fontsize=10.5, pad=8, color="#111827")
 
-    ax.text(width / 2, 68, "Simulation Calibration (Exp 0)", ha="center", va="center", fontsize=24, color="black", zorder=4)
-    ax.text(2350, 195, "(b) Potential cost - rel-RMSE = 0.306", ha="center", va="center", fontsize=18, color="black", zorder=4)
-    ax.text(2050, 292, "rel-RMSE = 0.306", ha="center", va="center", fontsize=18, color="#333333", zorder=4)
-
-    fig.savefig(dst, bbox_inches="tight", pad_inches=0)
+    fig.tight_layout()
+    fig.savefig(dst, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
 
 
@@ -154,7 +176,7 @@ def build_exp1_figure() -> None:
     prevented = float(metrics["prevented"])
     cps = float(metrics["cps"])
 
-    fig, ax = plt.subplots(figsize=(7.5, 4.5))
+    fig, ax = plt.subplots(figsize=(6.9, 4.1))
     bars = ax.bar(
         ["Requested", "Auto-corrected"],
         [requested, corrected],
@@ -164,7 +186,7 @@ def build_exp1_figure() -> None:
         width=0.55,
     )
     for bar, value in zip(bars, [requested, corrected]):
-        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.4, f"{value} nodes", ha="center", fontsize=10)
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.35, f"{value} nodes", ha="center", fontsize=9.5)
 
     ax.annotate(
         "",
@@ -174,16 +196,17 @@ def build_exp1_figure() -> None:
     )
     ax.text(
         0.5,
-        requested + 1.6,
-        f"AUTO_CORRECT\nPrevented cost = ${prevented:.2f}\nCPS = {cps:.3f}",
+        requested + 1.15,
+        f"Auto-correct\nPrevented cost = ${prevented:.2f}\nCPS = {cps:.3f}",
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=9.5,
         color="#111827",
     )
-    ax.set_ylabel("Allocated nodes")
-    ax.set_ylim(0, requested + 5)
-    ax.set_title("Showcase pre-billing intervention: ETL cluster right-sizing", fontsize=11)
+    ax.set_ylabel("Allocated nodes", fontsize=10)
+    ax.set_ylim(0, requested + 4)
+    ax.tick_params(axis="x", labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
     ax.grid(axis="y", linewidth=0.4, alpha=0.35)
     ax.set_axisbelow(True)
     fig.tight_layout()
@@ -205,17 +228,17 @@ def build_exp2_figure() -> None:
     y_baseline = np.array([0.0, actual_cost, unchanged_cost])
     y_intervened = np.array([0.0, actual_cost, actual_cost])
 
-    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.0, 5.4), sharex=True, gridspec_kw={"height_ratios": [1, 1.2]})
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(7.4, 4.6), sharex=True, gridspec_kw={"height_ratios": [1, 1.15]})
 
     ax0.hlines(0.5, 0, trigger_min, color="#64748b", linewidth=7, label="Runaway execution")
     ax0.hlines(0.5, trigger_min, end_no_intervention, color="#cbd5e1", linewidth=7, linestyle="--", label="Cost avoided window")
     ax0.axvline(trigger_min, color="#b91c1c", linewidth=1.6, linestyle="--")
-    ax0.text(10, 0.8, "Launch", fontsize=9)
-    ax0.text(trigger_min + 8, 0.8, "CHECKPOINT intervention", fontsize=9, color="#7f1d1d")
+    ax0.text(10, 0.8, "Launch", fontsize=8)
+    ax0.text(trigger_min + 8, 0.8, "Checkpoint intervention", fontsize=8, color="#7f1d1d")
     ax0.set_yticks([])
     ax0.set_ylim(0.2, 1.0)
-    ax0.set_title("Runtime governance during runaway ML training", fontsize=11)
-    ax0.legend(loc="upper right", fontsize=8, frameon=False)
+    ax0.set_title("Runtime governance during runaway ML training", fontsize=10)
+    ax0.legend(loc="upper right", fontsize=7, frameon=False)
 
     ax1.plot(x, y_baseline, color="#94a3b8", linewidth=2.0, label="No intervention")
     ax1.plot(x, y_intervened, color="#1f2937", linewidth=2.2, label="With runtime governance")
@@ -223,13 +246,14 @@ def build_exp2_figure() -> None:
     ax1.annotate(
         f"Prevented = ${prevented:.2f}\nCPS = {cps:.3f}",
         xy=(trigger_min + 70, actual_cost + prevented * 0.45),
-        fontsize=9,
+        fontsize=8,
         bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#94a3b8"),
     )
-    ax1.set_xlabel("Elapsed time (minutes)")
-    ax1.set_ylabel("Accumulated cost ($)")
+    ax1.set_xlabel("Elapsed time (minutes)", fontsize=9)
+    ax1.set_ylabel("Accumulated cost ($)", fontsize=9)
+    ax1.tick_params(axis="both", labelsize=8)
     ax1.grid(linewidth=0.4, alpha=0.35)
-    ax1.legend(loc="upper left", fontsize=8, frameon=False)
+    ax1.legend(loc="upper left", fontsize=7, frameon=False)
 
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "exp2_runtime_timeline.pdf", bbox_inches="tight")

@@ -6,7 +6,7 @@
 
 ![Research Prototype](https://img.shields.io/badge/Research_Prototype-Evaluation-7c3aed)
 ![Streamlit Demo](https://img.shields.io/badge/Streamlit-Demo-e11d48?logo=streamlit&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.11-3b82f6?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.14-3b82f6?logo=python&logoColor=white)
 ![FAISS](https://img.shields.io/badge/FAISS-KNN-0d9488)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-d97706)
 ![Cloud Governance](https://img.shields.io/badge/Cloud-Governance-0891b2)
@@ -16,6 +16,30 @@
 [![Experiments](https://img.shields.io/badge/Research-Experiments-1d4ed8?style=for-the-badge)](docs/EXPERIMENTS.md)
 
 </div>
+
+---
+
+## Research Paper
+
+**PBCP: Pre-Billing Cost Prevention for Intent-Aware Cloud Governance**
+
+**Authors:** Keerthi Rapolu · Sreeja Katta
+
+📄 [Read the Paper](paper/PBCP_Pre_Billing_Cost_Prevention.pdf)
+
+### Abstract
+
+Cloud governance systems usually detect waste only after resources have been provisioned, used, and billed. This timing makes many optimizations economically reactive even when post-execution diagnosis is accurate. PBCP introduces an intent-aware governance framework that predicts likely waste before execution and applies intervention before cost is incurred.
+
+**Key contributions:**
+
+- Pre-Billing Cost Prevention (PBCP) framework
+- Cost Prevention Score (CPS)
+- Intent-Fit Score (IFS)
+- Prevent → Correct → Learn governance architecture
+- 500-workload benchmark with 28,423 runs
+
+---
 
 > **Research Prototype** — PBCP is a controlled cloud systems research prototype and evaluation benchmark. It is not a production governance platform. Production deployment would require calibration against an organization's own telemetry and enforcement stack.
 
@@ -55,17 +79,6 @@ Example: a team submits a 20-node cluster for a short ETL workload. The job fini
 
 PBCP is organized around a simple loop: **Prevent → Correct → Learn**.
 
-```text
-Natural Language Workload
-→ Intent Inference
-→ FAISS KNN Retrieval
-→ Pre-Execution Simulation
-→ EV Decision Engine
-→ Runtime Optimizer
-→ CPS + IFS Tracking
-→ Policy Learning Loop
-```
-
 - **Prevent**: infer workload intent, retrieve similar historical cases, simulate likely waste, and choose an intervention.
 - **Correct**: apply runtime actions when observed behavior diverges from declared intent.
 - **Learn**: update policies and improve prevention quality over repeated generations.
@@ -73,6 +86,14 @@ Natural Language Workload
 > **Metric note:** IFS is defined as cosine similarity between intent and behavior embeddings. Dashboard sub-scores are interpretability aids only — not the canonical research metric.
 
 ![PBCP Architecture](assets/pbcp_architecture.svg)
+
+## Research Contributions
+
+1. **Pre-Billing Governance** — reframes cloud cost control as an early-intervention systems problem rather than a post-billing reporting problem
+2. **Cost Prevention Score (CPS)** — measures how much potential waste was prevented before billing
+3. **Intent-Fit Score (IFS)** — measures workload alignment between declared intent and observed runtime behavior
+4. **Intent-Behavior Discrepancy (IBD)** — framework for modeling divergence between workload intent and runtime behavior
+5. **Prevent → Correct → Learn Architecture** — governance pipeline combining pre-billing prevention, runtime correction, and policy learning
 
 ## Key Results
 
@@ -88,7 +109,7 @@ Natural Language Workload
 | Exp 5 — System Roll-up | ESR | 0.981 |
 | Exp 6 — Convergence | Peak Full PBCP CPS | 0.733 |
 | Exp 6 — Convergence | Peak No-Phase-3 CPS | 0.090 |
-| Exp 6 — Convergence | Improvement vs. no-Phase-3 | **8.1×** |
+| Exp 6 — Convergence | Improvement vs. no-Phase-3 | **56×** |
 
 > † Cost rel-RMSE reflects submission-time duration uncertainty (±25% by design).
 > Pre-execution cost prediction inherently carries this uncertainty; 0.306 is within
@@ -103,7 +124,8 @@ git clone https://github.com/Keerthi-Rapolu/intent-aware-cloud-governance.git
 cd intent-aware-cloud-governance
 pip install -r requirements.txt
 
-# Generate dataset
+# Generate the synthetic 500-workload benchmark dataset (~30 seconds)
+# Required before running experiments or the demo — dataset is not committed to the repo
 python data/generate_dataset.py
 
 # Run benchmark

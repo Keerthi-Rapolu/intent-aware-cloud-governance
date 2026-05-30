@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+type: software
+title: "PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance"
+authors:
+  - family-names: Rapolu
+    given-names: Keerthi
+  - family-names: Katta
+    given-names: Sreeja
+year: 2026
+version: "2.0"
+url: "https://github.com/Keerthi-Rapolu/intent-aware-cloud-governance"
+preferred-citation:
+  type: unpublished
+  title: "PBCP: A Pre-Billing Cost Prevention Framework for Intent-Aware Cloud Governance"
+  authors:
+    - family-names: Rapolu
+      given-names: Keerthi
+    - family-names: Katta
+      given-names: Sreeja
+  year: 2026
+  notes: "Manuscript under review."

@@ -19,12 +19,12 @@ workload-intent representation, is compared with historical analogs, and is then
 evaluated by a pre-execution simulator and expected-value decision engine before
 resources are launched.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/architecture_overview.pdf}
+\includegraphics[width=\textwidth]{figures/architecture_overview.pdf}
 \caption{PBCP system architecture. The pipeline groups pre-billing prevention, runtime correction, and policy learning into one governance loop.}
 \label{fig:architecture}
-\end{figure}
+\end{figure*}
 
 The figure also shows why PBCP is not only a pre-provision filter. Prevention,
 runtime governance, and policy learning operate as a continuous control loop so
@@ -63,7 +63,7 @@ from expected behavior before provisioning occurs.
 \subsection{EV Decision Engine}
 
 The expected-value decision engine compares the outcomes of
-\texttt{BLOCK}, \texttt{AUTO\_CORRECT}, \texttt{SUGGEST}, and \texttt{PASS} by
+block, auto-correct, suggest, and pass by
 balancing predicted prevented cost against intervention cost, delay, and failure
 risk. This decision-theoretic step matters because governance is not free:
 aggressive intervention can reduce waste while also increasing execution risk.

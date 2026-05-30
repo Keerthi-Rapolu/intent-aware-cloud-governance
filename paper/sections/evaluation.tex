@@ -34,7 +34,7 @@ eliminate downstream uncertainty.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/exp0_calibration.pdf}
+\includegraphics[width=0.96\textwidth]{figures/exp0_calibration.pdf}
 \caption{Simulation calibration for Exp~0. Predicted utilization closely tracks observed utilization, with utilization MAE of 0.054 and cost rel-RMSE of 0.306.}
 \label{fig:exp0-calibration}
 \end{figure*}
@@ -62,7 +62,7 @@ requests without manufacturing unnecessary corrections on already aligned ones.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/exp1_preprovision.pdf}
+\includegraphics[width=0.88\linewidth]{figures/exp1_preprovision.pdf}
 \caption{Showcase pre-provision intervention for a 20-node ETL request. PBCP auto-corrects the request to 10 nodes before billing begins, preventing \$15.36 with CPS of 0.500.}
 \label{fig:exp1-preprovision}
 \end{figure}
@@ -82,18 +82,20 @@ divergence patterns still emerge only after workload launch.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.9\linewidth]{figures/exp2_runtime_timeline.pdf}
+\includegraphics[width=0.82\linewidth]{figures/exp2_runtime_timeline.pdf}
 \caption{Runtime governance intervention during a runaway ML training workload. The intervention checkpoints prolonged execution at the anomaly boundary, preventing \$97.92 of additional cost accumulation.}
 \label{fig:exp2-runtime}
 \end{figure}
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.05}
 \caption{Runtime intervention scenarios from Exp~2. These cases illustrate how runtime governance complements pre-billing control when hidden failures emerge only after launch.}
 \label{tab:exp2-runtime}
-\input{tables/exp2_runtime_cases}
-\end{table}
+\resizebox{0.72\textwidth}{!}{\input{tables/exp2_runtime_cases}}
+\end{table*}
 
 \subsection{Exp 3: Does IFS Outperform CPU-Threshold Detection?}
 
